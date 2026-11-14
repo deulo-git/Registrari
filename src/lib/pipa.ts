@@ -10,6 +10,7 @@ import type { Lang } from './i18n'
 export type Mood =
   | 'walk' | 'run' | 'sit' | 'lie' | 'sniff' | 'play' | 'chase' | 'roll'
   | 'stretch' | 'scratch' | 'beg' | 'dig' | 'drink' | 'sleep' | 'poop' | 'leave'
+  | 'dance' | 'shake' | 'bow' | 'hop' | 'butterfly' | 'bone' | 'sneeze' | 'wave' | 'howl' | 'tummy'
   | 'happy' | 'away'
 
 /** Catalan names used in the JSON → internal mood ids. */
@@ -30,6 +31,16 @@ const MOVE_IDS: Record<string, Mood> = {
   'dormir': 'sleep',
   'fer caca': 'poop',
   'marxar': 'leave',
+  'ballar': 'dance',
+  'sacsejar-se': 'shake',
+  'fer reverència': 'bow',
+  'saltar': 'hop',
+  'perseguir una papallona': 'butterfly',
+  'rosegar un os': 'bone',
+  'esternudar': 'sneeze',
+  'saludar amb la pota': 'wave',
+  'udolar': 'howl',
+  'panxa enlaire': 'tummy',
 }
 
 export type PhraseList =

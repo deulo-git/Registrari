@@ -24,8 +24,8 @@ const OUT_MS = 170
 
 /**
  * Today screen, sized to the viewport (no page scroll): day picker on top,
- * the big button with Pipa in the middle, and the day's entries below in
- * their own scroll area. The entries follow the finger while swiping
+ * the day's entries below it in their own scroll area, and the big button
+ * with Pipa at the bottom, Pipa walking just above the tab bar. The entries follow the finger while swiping
  * left/right. Tapping empty space calls Pipa back when she has wandered off.
  */
 export function Today({ active, day, setDay, onAdd, onEdit }: Props) {
@@ -125,12 +125,6 @@ export function Today({ active, day, setDay, onAdd, onEdit }: Props) {
         <button type="button" className="day-arrow" onClick={() => go(1)} disabled={isToday} aria-label="→"><ChevronRight size={26} /></button>
       </div>
 
-      <section className="hero" onClick={(e) => {
-        if (!(e.target as HTMLElement).closest('.add-hub, .pet, .poop')) callPet()
-      }}>
-        <Pet hidden={open || !active} water={water} />
-        <AddButton open={open} setOpen={setOpen} onPick={onAdd} waterProgress={water} />
-      </section>
 
       <div className={'day-content ' + slide} key={'c' + day.getTime()}
         style={leaving
@@ -148,6 +142,13 @@ export function Today({ active, day, setDay, onAdd, onEdit }: Props) {
         {entries.length > 0 && <Timeline entries={[...entries].reverse()} onSelect={onEdit} />}
       </div>
 
+
+      <section className="hero" onClick={(e) => {
+        if (!(e.target as HTMLElement).closest('.add-hub, .pet, .poop')) callPet()
+      }}>
+        <Pet hidden={open || !active} water={water} />
+        <AddButton open={open} setOpen={setOpen} onPick={onAdd} waterProgress={water} />
+      </section>
     </div>
   )
 }

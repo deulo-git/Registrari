@@ -54,14 +54,26 @@
       "beure": 1.6,
       "dormir": 0.6,
       "fer caca": 0.35,
-      "marxar": 0.5
+      "marxar": 0.5,
+      "ballar": 0.8,
+      "sacsejar-se": 0.8,
+      "fer reverència": 0.8,
+      "saltar": 0.8,
+      "perseguir una papallona": 0.8,
+      "rosegar un os": 0.8,
+      "esternudar": 0.6,
+      "saludar amb la pota": 0.8,
+      "udolar": 0.5,
+      "panxa enlaire": 0.8
     },
     "nit": {
       "dormir": 10,
       "estirar-se": 2,
       "estirar-se i badallar": 1,
       "caminar": 1,
-      "fer caca": 0.1
+      "fer caca": 0.1,
+      "panxa enlaire": 0.5,
+      "udolar": 0.2
     }
   },
 

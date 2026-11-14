@@ -28,7 +28,10 @@ const HALF = 52
 /** Button radius: where her nose reaches the water when drinking. */
 const BUTTON_R = 78
 /** Moods that just last a while in place (a tap can interrupt them). */
-const IN_PLACE: Mood[] = ['sit', 'lie', 'sniff', 'play', 'chase', 'roll', 'stretch', 'scratch', 'beg', 'dig', 'drink']
+const IN_PLACE: Mood[] = [
+  'sit', 'lie', 'sniff', 'play', 'chase', 'roll', 'stretch', 'scratch', 'beg', 'dig', 'drink',
+  'dance', 'shake', 'bow', 'hop', 'butterfly', 'bone', 'sneeze', 'wave', 'howl', 'tummy',
+]
 
 interface Poop { id: number; x: number; gone?: boolean }
 const POOP_KEY = 'registrari.poops'
@@ -63,10 +66,15 @@ export function Pet({ hidden, water }: Props) {
   const petRef = useRef<HTMLDivElement>(null)
   const anchorRef = useRef<HTMLDivElement>(null)
   const taps = useRef<number[]>([])
+  /** Cross with us (tapped too much): silent and deaf to calls until she comes back. */
+  const sulking = useRef(false)
+  /** Last time a tap made her talk: at most one phrase per second. */
+  const lastTapTalk = useRef(0)
   const s = useRef({ x, mood, water, lang, hidden, facing, poops })
   s.current = { x, mood, water, lang, hidden, facing, poops }
 
   const say = (list: PhraseList) => {
+    if (sulking.current) return
     const text = phrase(list, s.current.lang)
     if (!text) return
     window.clearTimeout(sayTimer.current)
@@ -156,13 +164,14 @@ export function Pet({ hidden, water }: Props) {
       default:
         setMood(m)
         if (m === 'sleep') schedule(next, rand(14000, 24000))
-        else if (m === 'chase' || m === 'roll') schedule(next, rand(2600, 3400))
+        else if (m === 'chase' || m === 'roll' || m === 'shake' || m === 'sneeze') schedule(next, rand(2600, 3400))
         else schedule(next, rand(4000, 7500))
     }
   }
 
   /** Walk back in from the edge she left by. */
   const comeBack = (called = false) => {
+    sulking.current = false
     const fromLeft = s.current.x < 0.5
     const target = fromLeft ? rand(0.12, 0.25) : rand(0.75, 0.88)
     moveTo(target, called, () => {
@@ -188,7 +197,7 @@ export function Pet({ hidden, water }: Props) {
     const onEvt = (e: Event) => {
       const what = (e as CustomEvent).detail
       if (what === 'call') {
-        if (s.current.mood === 'away') comeBack(true)
+        if (s.current.mood === 'away' && !sulking.current) comeBack(true)
         return
       }
       if (what !== 'happy' || s.current.mood === 'away') return
@@ -208,14 +217,21 @@ export function Pet({ hidden, water }: Props) {
   }, [])
 
   const poke = () => {
-    if (s.current.mood === 'sleep') { say('tocarDormint'); return }
-    if (s.current.mood === 'away' || s.current.mood === 'leave') return
-    // Too many taps in a short while: sometimes she gets cross and runs off.
+    if (sulking.current || s.current.mood === 'away' || s.current.mood === 'leave') return
     const now = Date.now()
+    // At most one phrase per second, however fast she is tapped.
+    const canTalk = now - lastTapTalk.current >= 1000
+    if (s.current.mood === 'sleep') {
+      if (canTalk) { lastTapTalk.current = now; say('tocarDormint') }
+      return
+    }
+    // Too many taps in a short while: sometimes she gets cross and runs off.
     taps.current = [...taps.current.filter((t) => now - t < PIPA.annoyWindowMs), now]
     if (taps.current.length > PIPA.annoyAfterTaps && Math.random() < PIPA.annoyChance) {
       taps.current = []
+      lastTapTalk.current = now
       say('enfadada')
+      sulking.current = true
       const out = s.current.x < 0.5 ? -0.35 : 1.35
       moveTo(out, true, () => {
         setMood('away')
@@ -223,6 +239,8 @@ export function Pet({ hidden, water }: Props) {
       }, true)
       return
     }
+    if (!canTalk) return
+    lastTapTalk.current = now
     say('tocar')
     if (IN_PLACE.includes(s.current.mood)) {
       setMood('happy')
@@ -277,6 +295,11 @@ export function Pet({ hidden, water }: Props) {
             {mood === 'play' && <span className="pet-ball" />}
             {mood === 'dig' && <span className="pet-dirt"><i /><i /><i /></span>}
             {mood === 'drink' && water > 0.02 && <span className="pet-drops"><i /><i /><i /></span>}
+          {mood === 'shake' && <span className="pet-spray"><i /><i /><i /><i /><i /></span>}
+          {mood === 'butterfly' && <span className="pet-butterfly"><ButterflySvg /></span>}
+          {mood === 'bone' && <span className="pet-bone"><BoneSvg /></span>}
+          {mood === 'sneeze' && <span className="pet-puff"><i /><i /><i /></span>}
+          {mood === 'howl' && <span className="pet-notes"><i>♪</i><i>♫</i><i>♪</i></span>}
           </div>
           {mood === 'sleep' && <span className="pet-z"><i>z</i><i>z</i><i>Z</i></span>}
           {mood === 'happy' && <span className="pet-hearts"><i>♥</i><i>♥</i><i>♥</i></span>}
@@ -291,6 +314,29 @@ export function Pet({ hidden, water }: Props) {
         </div>
       )}
     </>
+  )
+}
+
+function ButterflySvg() {
+  return (
+    <svg viewBox="0 0 24 20" width="22" height="18" aria-hidden="true">
+      <g className="bf-l"><path d="M12 10C8 2 2 2 2 7s5 6 10 3z" fill="#f97316" /><path d="M12 10c-4 2-7 7-4 8s4-4 4-8z" fill="#fb923c" /></g>
+      <g className="bf-r"><path d="M12 10c4-8 10-8 10-3s-5 6-10 3z" fill="#f97316" /><path d="M12 10c4 2 7 7 4 8s-4-4-4-8z" fill="#fb923c" /></g>
+      <rect x="11.3" y="5" width="1.4" height="11" rx=".7" fill="#3b2314" />
+    </svg>
+  )
+}
+
+function BoneSvg() {
+  return (
+    <svg viewBox="0 0 30 12" width="26" height="11" aria-hidden="true">
+      <path d="M6 3h18M6 9h18" stroke="#f5f0e6" strokeWidth="0" />
+      <rect x="5" y="3.5" width="20" height="5" rx="2" fill="#f5efe3" stroke="#d6c9ae" strokeWidth=".8" />
+      <circle cx="5" cy="3.5" r="3" fill="#f5efe3" stroke="#d6c9ae" strokeWidth=".8" />
+      <circle cx="5" cy="8.5" r="3" fill="#f5efe3" stroke="#d6c9ae" strokeWidth=".8" />
+      <circle cx="25" cy="3.5" r="3" fill="#f5efe3" stroke="#d6c9ae" strokeWidth=".8" />
+      <circle cx="25" cy="8.5" r="3" fill="#f5efe3" stroke="#d6c9ae" strokeWidth=".8" />
+    </svg>
   )
 }
 
