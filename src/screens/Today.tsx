@@ -4,7 +4,7 @@ import { useI18n, type TKey } from '../lib/i18n'
 import { addDays, cap, fmtDate, sameDay, startOfDay } from '../lib/format'
 import { ENTRY_TYPES, TYPE_COLOR, isPlainWater, type Entry, type EntryType, type WaterData } from '../lib/types'
 import { AddButton } from '../components/AddButton'
-import { Pet } from '../components/Pet'
+import { Pet, callPet } from '../components/Pet'
 import { Timeline } from '../components/Timeline'
 import { ChevronLeft, ChevronRight, TypeIcon } from '../components/Icons'
 
@@ -19,9 +19,10 @@ interface Props {
 const SWIPE = 45
 
 /**
- * Today screen: day picker on top, the day's entries in the middle, and the
- * big button with Pipa pinned at the bottom (above the tab bar).
- * The day content follows the finger while swiping left/right.
+ * Today screen, sized to the viewport (no page scroll): day picker on top,
+ * the big button with Pipa in the middle, and the day's entries below in
+ * their own scroll area. The entries follow the finger while swiping
+ * left/right. Tapping empty space calls Pipa back when she has wandered off.
  */
 export function Today({ day, setDay, onAdd, onEdit }: Props) {
   const { t, locale } = useI18n()
@@ -78,7 +79,7 @@ export function Today({ day, setDay, onAdd, onEdit }: Props) {
   }
 
   return (
-    <div className="screen today" onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
+    <div className="screen today-screen" onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
       onTouchCancel={() => { touch.current = null; setDrag(0) }}>
       <div className="day-nav" aria-hidden={open}>
         <button type="button" className="day-arrow" onClick={() => go(-1)} aria-label="←"><ChevronLeft size={26} /></button>
@@ -91,6 +92,13 @@ export function Today({ day, setDay, onAdd, onEdit }: Props) {
         )}
         <button type="button" className="day-arrow" onClick={() => go(1)} disabled={isToday} aria-label="→"><ChevronRight size={26} /></button>
       </div>
+
+      <section className="hero" onClick={(e) => {
+        if (!(e.target as HTMLElement).closest('.add-hub, .pet, .poop')) callPet()
+      }}>
+        <Pet hidden={open} water={water} />
+        <AddButton open={open} setOpen={setOpen} onPick={onAdd} waterProgress={water} />
+      </section>
 
       <div className={'day-content ' + slide} key={'c' + day.getTime()}
         style={{ transform: drag ? `translateX(${drag}px)` : undefined, transition: drag ? 'none' : undefined }}>
@@ -106,10 +114,6 @@ export function Today({ day, setDay, onAdd, onEdit }: Props) {
         {entries.length > 0 && <Timeline entries={[...entries].reverse()} onSelect={onEdit} />}
       </div>
 
-      <section className="hero">
-        <Pet hidden={open} water={water} />
-        <AddButton open={open} setOpen={setOpen} onPick={onAdd} waterProgress={water} />
-      </section>
     </div>
   )
 }

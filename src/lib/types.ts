@@ -36,7 +36,7 @@ export const MEAL_KINDS = ['breakfast', 'midmorning', 'lunch', 'snack', 'dinner'
 export type MealKind = (typeof MEAL_KINDS)[number]
 export interface MealData { meal: MealKind; items: FoodItem[]; notes?: string }
 
-export interface SymptomData { category: string; intensity: number; durationMin?: number; notes?: string }
+export interface SymptomData { category: string; intensity: number; durationMin?: number; allDay?: boolean; notes?: string }
 
 export type BloodLevel = 'none' | 'little' | 'lot'
 export interface BowelData {

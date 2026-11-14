@@ -72,7 +72,8 @@ export function describe(e: Entry, t: T, { symptomLabel, liquidLabel }: Labels, 
       const d = e.data as SymptomData
       parts.push(symptomLabel(d.category))
       parts.push(`${t('intensity')} ${d.intensity}/10`)
-      if (d.durationMin) parts.push(`${d.durationMin} ${t('minutes')}`)
+      if (d.allDay) parts.push(t('allDay').toLocaleLowerCase())
+      else if (d.durationMin) parts.push(`${d.durationMin} ${t('minutes')}`)
       notes = d.notes
       break
     }

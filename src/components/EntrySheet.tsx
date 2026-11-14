@@ -463,10 +463,19 @@ function SymptomForm({ data, set, categories }: { data: SymptomData; set: SetDat
         </div>
         <div className="scale-labels"><small>0</small><small>5</small><small>10</small></div>
       </div>
-      <label className="field">
+      <div className="field">
         <span>{t('duration')} ({t('optional')})</span>
-        <NumberInput value={data.durationMin} step="1" suffix={t('minutes')} onChange={(v) => set({ ...data, durationMin: v })} />
-      </label>
+        <div className="row">
+          {!data.allDay && (
+            <NumberInput value={data.durationMin} step="1" suffix={t('minutes')}
+              onChange={(v) => set({ ...data, durationMin: v })} />
+          )}
+          <button type="button" className={'chip all-day' + (data.allDay ? ' on' : '')} aria-pressed={!!data.allDay}
+            onClick={() => set({ ...data, allDay: !data.allDay, durationMin: data.allDay ? data.durationMin : undefined })}>
+            {t('allDay')}
+          </button>
+        </div>
+      </div>
     </>
   )
 }

@@ -1,0 +1,115 @@
+{
+  "_com_funciona": [
+    "Aquest fitxer controla què diu i què fa la Pipa. Edita'l, fes commit i push: Vercel publica l'app sola.",
+    "PES = probabilitat relativa dins de la mateixa llista. Una frase amb pes 4 surt el doble que una amb pes 2.",
+    "Cada frase té el text en català (ca) i en castellà (es). Si en falta un, es fa servir l'altre.",
+    "Les llistes de 'frases': tocar (quan la toques), tocarDormint (si la toques mentre dorm), sola (quan parla sense que la toquis),",
+    "set (si hi ha poca aigua), desar (quan es desa un registre), aiguaPlena (si ja s'ha arribat a l'objectiu d'aigua),",
+    "cridada (quan no hi és i la crides tocant la pantalla), caca (quan ha fet caca), cacaRecollida (quan la recollim).",
+    "'moviments' són els pesos de cada cosa que pot fer, de dia i de nit. Posa 0 per desactivar-ne una.",
+    "'parlar.cadaSegons' = cada quant parla sola (mínim i màxim, en segons). 'fora.segons' = quant de temps pot estar fora de pantalla."
+  ],
+
+  "parlar": {
+    "cadaSegons": [28, 50],
+    "duradaSegons": 3.2,
+    "probabilitatSetSiPocaAigua": 0.5
+  },
+
+  "fora": {
+    "segons": [25, 70]
+  },
+
+  "caca": {
+    "maximALaVegada": 2
+  },
+
+  "moviments": {
+    "dia": {
+      "caminar": 4,
+      "correr": 1,
+      "seure": 2,
+      "estirar-se": 1,
+      "ensumar": 1.5,
+      "jugar": 2,
+      "perseguir-se la cua": 1,
+      "rebolcar-se": 1,
+      "estirar-se i badallar": 1,
+      "gratar-se": 1,
+      "fer el sant": 1,
+      "cavar": 1,
+      "beure": 1.6,
+      "dormir": 0.6,
+      "fer caca": 0.35,
+      "marxar": 0.5
+    },
+    "nit": {
+      "dormir": 10,
+      "estirar-se": 2,
+      "estirar-se i badallar": 1,
+      "caminar": 1,
+      "fer caca": 0.1
+    }
+  },
+
+  "frases": {
+    "tocar": [
+      { "pes": 4, "ca": "Guau!", "es": "¡Guau!" },
+      { "pes": 2, "ca": "Guau guau!", "es": "¡Guau guau!" },
+      { "pes": 3, "ca": "Què guapa estàs!", "es": "¡Qué guapa estás!" },
+      { "pes": 3, "ca": "En Sergi t'estima ❤", "es": "Sergi te quiere ❤" },
+      { "pes": 2, "ca": "Tinc set", "es": "Tengo sed" },
+      { "pes": 2, "ca": "Em dic Pipa!", "es": "¡Me llamo Pipa!" },
+      { "pes": 1, "ca": "Els meus cognoms són Degi Rasol", "es": "Mis apellidos son Degi Rasol" },
+      { "pes": 1, "ca": "I el puto carnet de conduir?", "es": "¿Y el puto carnet de conducir?" },
+      { "pes": 2, "ca": "M'encanta estar amb tu", "es": "Me encanta estar contigo" },
+      { "pes": 2, "ca": "Rasca'm la panxa!", "es": "¡Ráscame la barriga!" },
+      { "pes": 2, "ca": "Ets la millor!", "es": "¡Eres la mejor!" }
+    ],
+    "tocarDormint": [
+      { "pes": 4, "ca": "Eh, deixa'm dormir…", "es": "¡Eh, déjame dormir…!" },
+      { "pes": 2, "ca": "Zzz… cinc minuts més…", "es": "Zzz… cinco minutos más…" },
+      { "pes": 2, "ca": "Mmm… ara no…", "es": "Mmm… ahora no…" }
+    ],
+    "sola": [
+      { "pes": 3, "ca": "Jugues amb mi?", "es": "¿Juegas conmigo?" },
+      { "pes": 2, "ca": "Anem a passejar?", "es": "¿Vamos a pasear?" },
+      { "pes": 2, "ca": "Què guapa estàs!", "es": "¡Qué guapa estás!" },
+      { "pes": 2, "ca": "En Sergi t'estima ❤", "es": "Sergi te quiere ❤" },
+      { "pes": 2, "ca": "Has begut aigua?", "es": "¿Has bebido agua?" },
+      { "pes": 2, "ca": "Com et trobes avui?", "es": "¿Cómo te encuentras hoy?" },
+      { "pes": 1, "ca": "Quina gana!", "es": "¡Qué hambre!" },
+      { "pes": 2, "ca": "Em dic Pipa", "es": "Me llamo Pipa" },
+      { "pes": 1, "ca": "Els meus cognoms són Degi Rasol", "es": "Mis apellidos son Degi Rasol" },
+      { "pes": 1, "ca": "I el puto carnet de conduir?", "es": "¿Y el puto carnet de conducir?" },
+      { "pes": 1, "ca": "Guau!", "es": "¡Guau!" }
+    ],
+    "set": [
+      { "pes": 3, "ca": "Tinc set…", "es": "Tengo sed…" },
+      { "pes": 2, "ca": "Hi ha poca aigua!", "es": "¡Hay poca agua!" },
+      { "pes": 2, "ca": "Bevem una mica d'aigua?", "es": "¿Bebemos un poco de agua?" }
+    ],
+    "desar": [
+      { "pes": 2, "ca": "Molt bé!", "es": "¡Muy bien!" },
+      { "pes": 2, "ca": "Bona feina!", "es": "¡Buen trabajo!" },
+      { "pes": 2, "ca": "Guau, gràcies!", "es": "¡Guau, gracias!" },
+      { "pes": 2, "ca": "Apuntat!", "es": "¡Apuntado!" }
+    ],
+    "aiguaPlena": [
+      { "pes": 2, "ca": "Ja hem begut prou aigua!", "es": "¡Ya hemos bebido bastante agua!" },
+      { "pes": 1, "ca": "Que bé, aigua a dojo!", "es": "¡Qué bien, agua a tope!" }
+    ],
+    "cridada": [
+      { "pes": 5, "ca": "M'has cridat?", "es": "¿Me has llamado?" },
+      { "pes": 1, "ca": "Ja soc aquí!", "es": "¡Ya estoy aquí!" }
+    ],
+    "caca": [
+      { "pes": 5, "ca": "Mira, he fet el número 2", "es": "Mira, he hecho el número 2" },
+      { "pes": 1, "ca": "Ups… perdó!", "es": "Ups… ¡perdón!" }
+    ],
+    "cacaRecollida": [
+      { "pes": 3, "ca": "Gràcies!", "es": "¡Gracias!" },
+      { "pes": 1, "ca": "Quina vergonya…", "es": "Qué vergüenza…" }
+    ]
+  }
+}

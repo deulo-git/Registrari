@@ -8,8 +8,19 @@
 // the lockout), so the Gemini key can't be spent by anyone who only has the link.
 // The key lives in the GEMINI_API_KEY secret, never in the app.
 
-const MODEL = 'gemini-flash-latest'
-const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`
+// Free-tier models get "503 high demand" often, so try several in turn, each
+// with its own time limit, well inside the function's wall-clock limit.
+// thinking: whether the model accepts a thinking budget (we turn thinking off
+// for speed; it isn't needed for a nutrition estimate).
+const MODELS: { id: string; thinking: boolean }[] = [
+  { id: 'gemini-2.5-flash', thinking: true },
+  { id: 'gemini-2.5-flash-lite', thinking: true },
+  { id: 'gemini-flash-latest', thinking: false },
+  { id: 'gemini-2.0-flash', thinking: false },
+]
+const ATTEMPT_MS = 18000
+const TOTAL_MS = 60000
+const geminiUrl = (model: string) => `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -83,22 +94,47 @@ ${items.map((i, n) => `${n + 1}. ${i.name} — ${i.qty ? `${i.qty} ${i.unit}` : 
     },
   }
 
-  try {
-    const r = await fetch(GEMINI_URL, {
-      method: 'POST',
-      headers: { 'x-goog-api-key': key, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.2, responseMimeType: 'application/json', responseSchema: schema },
-      }),
-    })
-    if (!r.ok) {
-      console.error('gemini', r.status, await r.text())
-      return reply({ ok: false, error: 'ai_error' })
+  /** One model, one attempt: parsed array, or null to try the next model. */
+  const ask = async (model: { id: string; thinking: boolean }, ms: number): Promise<Record<string, unknown>[] | null> => {
+    const ctl = new AbortController()
+    const h = setTimeout(() => ctl.abort(), ms)
+    try {
+      const generationConfig: Record<string, unknown> = {
+        temperature: 0.2, responseMimeType: 'application/json', responseSchema: schema,
+      }
+      if (model.thinking) generationConfig.thinkingConfig = { thinkingBudget: 0 }
+      const r = await fetch(geminiUrl(model.id), {
+        method: 'POST',
+        signal: ctl.signal,
+        headers: { 'x-goog-api-key': key, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: prompt }] }], generationConfig }),
+      })
+      if (!r.ok) {
+        console.error('gemini', model.id, r.status, (await r.text()).slice(0, 300))
+        return null
+      }
+      const data = await r.json()
+      const text: string = data?.candidates?.[0]?.content?.parts?.map((p: { text?: string }) => p.text ?? '').join('') ?? ''
+      const out = JSON.parse(text)
+      return Array.isArray(out) ? out : null
+    } catch (e) {
+      console.error('gemini', model.id, (e as Error).name === 'AbortError' ? 'timeout' : String(e))
+      return null
+    } finally {
+      clearTimeout(h)
     }
-    const data = await r.json()
-    const text: string = data?.candidates?.[0]?.content?.parts?.map((p: { text?: string }) => p.text ?? '').join('') ?? ''
-    const out = JSON.parse(text) as Record<string, unknown>[]
+  }
+
+  try {
+    const started = Date.now()
+    let out: Record<string, unknown>[] | null = null
+    for (const m of MODELS) {
+      const left = TOTAL_MS - (Date.now() - started)
+      if (left < 3000) break
+      out = await ask(m, Math.min(ATTEMPT_MS, left))
+      if (out) break
+    }
+    if (!out) return reply({ ok: false, error: 'ai_error' })
     const num = (v: unknown) => (typeof v === 'number' && isFinite(v) && v >= 0 ? Math.round(v * 10) / 10 : 0)
     // Align by position with what was sent; the model may rephrase names.
     const result = items.map((it, i) => {

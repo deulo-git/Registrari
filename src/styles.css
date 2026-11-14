@@ -84,7 +84,7 @@ main { padding: 0 16px; }
 .grow { flex: 1; min-width: 0; }
 
 /* ── Today ── */
-.today { touch-action: pan-y; }
+.today-screen { touch-action: pan-y; }
 .day-nav {
   display: flex; align-items: center; justify-content: space-between; gap: 8px;
   background: var(--surface); border-radius: 18px; padding: 8px; box-shadow: var(--shadow);
@@ -253,7 +253,7 @@ main { padding: 0 16px; }
 .sheet .filter-chips { flex-wrap: wrap; margin: 0; padding: 0; }
 .fchip { flex: none; display: inline-flex; align-items: center; gap: 5px; padding: 7px 12px; border-radius: 99px; background: var(--surface); border: 1px solid var(--line); font-size: 13px; font-weight: 500; }
 .fchip.on { background: var(--c, var(--text)); color: #fff; border-color: transparent; }
-.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; background: var(--surface); border-radius: var(--radius); padding: 10px 8px; box-shadow: var(--shadow); }
+.cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; background: var(--surface); border-radius: var(--radius); padding: 10px 8px; box-shadow: var(--shadow); }
 .cal-wd { text-align: center; font-size: 11px; font-weight: 600; color: var(--muted); padding-bottom: 4px; }
 .cal-day { aspect-ratio: 1 / 1.05; border-radius: 10px; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding-top: 6px; gap: 4px; }
 .cal-day.out { opacity: .35; }
@@ -479,7 +479,7 @@ html, body { overflow-x: hidden; }
 .app { overflow-x: clip; }
 
 /* ── Today layout: day picker on top, button + pet pinned at the bottom ── */
-.today {
+.today-screen {
   min-height: calc(100dvh - 44px - var(--tabbar-h) - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 16px);
 }
 .day-nav { position: sticky; top: calc(env(safe-area-inset-top) + 41px); z-index: 15; }
@@ -643,3 +643,54 @@ html, body { overflow-x: hidden; }
 
 .pet-say-track { position: absolute; left: 0; right: 0; bottom: 10px; height: 90px; z-index: 4; pointer-events: none; }
 .pet-say-anchor { position: absolute; bottom: 0; width: 104px; height: 87px; transform: translateX(-50%); transition-property: left; transition-timing-function: linear; }
+
+/* ════════════════ v0.5: centred button, no page scroll, poop ════════════════ */
+
+/* Today fits the viewport exactly: picker on top, button centred, entries scroll inside. */
+.app:has(.today-screen) { padding-bottom: 0; }
+.today-screen {
+  touch-action: pan-y;
+  height: calc(100dvh - var(--topbar-h, 38px) - var(--tabbar-h) - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  min-height: 0; overflow: hidden; gap: 10px; padding-bottom: 10px;
+}
+.today-screen .day-nav { position: static; flex: none; }
+.today-screen .hero {
+  position: relative; bottom: auto; flex: 1 1 auto; min-height: 250px;
+  margin: 0 -16px; padding: 0 0 6px; background: none;
+  display: flex; align-items: center; justify-content: center;
+}
+.today-screen .day-content {
+  flex: 0 1 auto; max-height: 34%; overflow-y: auto; overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch; padding: 2px 2px 8px; margin: 0 -2px;
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 18px), transparent);
+}
+.today-screen .day-content:empty { display: none; }
+.pet-track, .pet-say-track { overflow-x: clip; overflow-y: visible; }
+.pet-track { bottom: 6px; }
+.pet-say-track { bottom: 6px; }
+
+/* Symptom: all-day toggle next to the minutes */
+.chip.all-day { flex: none; white-space: nowrap; }
+.chip.all-day.on { background: var(--c, var(--accent)); color: #fff; border-color: transparent; }
+
+/* Pipa away: nothing to see (she is past the edge) */
+.mood-away { visibility: hidden; }
+
+/* Pipa poops: rear down, tail up, concentrating */
+.mood-poop .poodle { transform-box: view-box; transform-origin: 72% 95%; animation: squat 2.2s ease-in-out forwards; }
+.mood-poop .p-leg-bl, .mood-poop .p-leg-br { transform: scaleY(.62); transition: transform .3s; }
+.mood-poop .p-tail { transform: rotate(-35deg); transition: transform .3s; }
+.mood-poop .p-eye-open { opacity: 0; }
+.mood-poop .p-eye-closed { opacity: 1; }
+@keyframes squat { 0% { transform: rotate(0); } 15%, 85% { transform: rotate(-9deg); } 40% { transform: rotate(-9deg) translateX(-1px); } 60% { transform: rotate(-9deg) translateX(1px); } 100% { transform: rotate(0); } }
+
+.poop-track { position: absolute; left: 0; right: 0; bottom: 6px; height: 30px; z-index: 3; pointer-events: none; overflow-x: clip; }
+.poop {
+  position: absolute; bottom: 0; transform: translateX(-50%); pointer-events: auto; padding: 6px; margin: -6px;
+  animation: poopDrop .5s cubic-bezier(.3, 1.6, .5, 1) both; transition: opacity .6s, transform .6s;
+}
+.poop.hidden { opacity: 0; pointer-events: none; }
+.poop.gone { opacity: 0; transform: translateX(-50%) translateY(-18px) scale(.4); pointer-events: none; }
+.poop::after { content: ''; position: absolute; left: 50%; top: -10px; width: 3px; height: 8px; border-radius: 2px; background: rgba(120, 90, 50, .35); animation: stink 1.6s ease-in-out infinite; }
+@keyframes poopDrop { from { transform: translateX(-50%) translateY(-14px) scale(.3); opacity: 0; } }
+@keyframes stink { 0%, 100% { transform: translateY(0) rotate(-10deg); opacity: 0; } 50% { transform: translateY(-6px) rotate(10deg); opacity: 1; } }

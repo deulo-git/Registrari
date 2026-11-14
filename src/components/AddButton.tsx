@@ -11,16 +11,13 @@ interface Props {
   waterProgress: number
 }
 
-/** The button sits at the bottom of the screen, so the bubbles fan out upwards. */
-const RX = 138
-const RY = 168
-const FROM = -192
-const TO = 12
+/** Bubbles burst out in a full circle around the button. */
+const RADIUS = 130
 
 /**
- * The big "+" button, at the bottom of the Today screen. It holds today's
+ * The big "+" button, in the middle of the Today screen. It holds today's
  * water as a wavy fill that rises as water is logged. Tapping it fans the
- * categories out above it as coloured bubbles (Glovo-style).
+ * categories out around it as coloured bubbles (Glovo-style).
  */
 export function AddButton({ open, setOpen, onPick, waterProgress }: Props) {
   const { t } = useI18n()
@@ -47,9 +44,9 @@ export function AddButton({ open, setOpen, onPick, waterProgress }: Props) {
         {full && <span className="ring-stars"><i>✦</i><i>✦</i><i>✦</i><i>✦</i></span>}
 
         {ENTRY_TYPES.map((type, i) => {
-          const a = (FROM + ((TO - FROM) / (ENTRY_TYPES.length - 1)) * i) * (Math.PI / 180)
-          const x = Math.cos(a) * RX
-          const y = Math.sin(a) * RY
+          const a = (-90 + (360 / ENTRY_TYPES.length) * i) * (Math.PI / 180)
+          const x = Math.cos(a) * RADIUS
+          const y = Math.sin(a) * RADIUS
           return (
             <button
               key={type}
