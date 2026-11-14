@@ -11,8 +11,8 @@ export function Timeline({ entries, onSelect, empty }: {
   if (!entries.length) return <p className="empty">{empty ?? t('nothingToday')}</p>
   return (
     <ol className="timeline">
-      {entries.map((e) => (
-        <li key={e.id}>
+      {entries.map((e, i) => (
+        <li key={e.id} style={{ '--i': Math.min(i, 12) } as React.CSSProperties}>
           <button type="button" className="tl-item" style={{ '--c': TYPE_COLOR[e.type] } as React.CSSProperties}
             onClick={() => onSelect(e)}>
             <time>{fmtTime(e.occurred_at, locale)}</time>

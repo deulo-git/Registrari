@@ -4,6 +4,7 @@ import { useI18n, type TKey } from '../lib/i18n'
 import { addDays, cap, fmtDate, sameDay, startOfDay } from '../lib/format'
 import { ENTRY_TYPES, TYPE_COLOR, isPlainWater, type Entry, type EntryType, type WaterData } from '../lib/types'
 import { AddButton } from '../components/AddButton'
+import { Pet } from '../components/Pet'
 import { Timeline } from '../components/Timeline'
 import { ChevronLeft, ChevronRight, TypeIcon } from '../components/Icons'
 
@@ -59,6 +60,7 @@ export function Today({ day, setDay, onAdd, onEdit }: Props) {
     <div className="screen today" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
       <section className="hero">
         <AddButton open={open} setOpen={setOpen} onPick={onAdd} waterProgress={waterMl / (config.waterGoalMl || 2000)} />
+        <Pet hidden={open} />
       </section>
 
       <div className={'day-nav ' + slide} key={day.getTime()} aria-hidden={open}>
@@ -73,8 +75,8 @@ export function Today({ day, setDay, onAdd, onEdit }: Props) {
 
       {counts.length > 0 && (
         <div className="day-counts">
-          {counts.map(({ ty, n }) => (
-            <span key={ty} className="count-chip" style={{ '--c': TYPE_COLOR[ty] } as React.CSSProperties}>
+          {counts.map(({ ty, n }, i) => (
+            <span key={ty + n} className="count-chip" style={{ '--c': TYPE_COLOR[ty], '--i': i } as React.CSSProperties}>
               <TypeIcon type={ty} size={15} color={TYPE_COLOR[ty]} /> {n} {t(`type_${ty}` as TKey)}
             </span>
           ))}

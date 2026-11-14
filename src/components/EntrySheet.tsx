@@ -13,6 +13,7 @@ import { matching, useSuggestions } from '../lib/suggestions'
 import { CameraIcon, CloseIcon, FileIcon, PlusIcon, SparkleIcon, TrashIcon, TypeIcon } from './Icons'
 import { BristolIcon } from './Bristol'
 import { toast } from './Toast'
+import { cheerPet } from './Pet'
 
 interface Props {
   type: EntryType
@@ -42,6 +43,8 @@ function defaults(type: EntryType, when: Date, glassMl: number): DataByType[Entr
     case 'document': return { kind: 'result', title: '', files: [] } satisfies DocumentData
   }
 }
+
+const QUICK_TIMES = ['08:00', '10:30', '13:30', '17:00', '20:30', '23:00']
 
 const hasNutrients = (i: FoodItem) =>
   [i.kcal, i.protein, i.carbs, i.fat, i.fiber].some((v) => v !== undefined && v !== null)
@@ -126,7 +129,7 @@ export function EntrySheet({ type, entry, defaultDate, onClose }: Props) {
         await saveEntry(pin, { id: entry?.id, type, occurred_at: fromLocalInput(when).toISOString(), data: payload })
         return true
       })
-      if (ok) { toast(t('saved')); onClose() }
+      if (ok) { toast(t('saved')); cheerPet(); onClose() }
     } catch { /* toast already shown */ } finally { setBusy(false) }
   }
 
@@ -150,10 +153,24 @@ export function EntrySheet({ type, entry, defaultDate, onClose }: Props) {
         </header>
 
         <div className="sheet-body">
-          <label className="field">
+          <div className="field">
             <span>{t('dateTime')}</span>
             <input type="datetime-local" value={when} onChange={(e) => setWhen(e.target.value)} />
-          </label>
+            {/* One-tap times, for logging the whole day at night. */}
+            <div className="time-chips">
+              {QUICK_TIMES.map((hm) => {
+                const on = when.slice(11, 16) === hm
+                return (
+                  <button key={hm} type="button" className={'tchip' + (on ? ' on' : '')}
+                    onClick={() => setWhen(`${when.slice(0, 10)}T${hm}`)}>{hm}</button>
+                )
+              })}
+              <button type="button" className="tchip now" onClick={() => {
+                const now = new Date()
+                setWhen(`${when.slice(0, 10)}T${toLocalInput(now).slice(11, 16)}`)
+              }}>{t('now')}</button>
+            </div>
+          </div>
 
           {type === 'water' && <WaterForm data={data as WaterData} set={setData} glassMl={config.glassMl} />}
           {type === 'meal' && <MealForm data={data as MealData} set={setData} />}
