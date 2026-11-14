@@ -60,6 +60,9 @@ export function Pet({ hidden, water }: Props) {
   const timer = useRef<number | undefined>(undefined)
   const sayTimer = useRef<number | undefined>(undefined)
   const chatterTimer = useRef<number | undefined>(undefined)
+  const petRef = useRef<HTMLDivElement>(null)
+  const anchorRef = useRef<HTMLDivElement>(null)
+  const taps = useRef<number[]>([])
   const s = useRef({ x, mood, water, lang, hidden, facing, poops })
   s.current = { x, mood, water, lang, hidden, facing, poops }
 
@@ -206,12 +209,48 @@ export function Pet({ hidden, water }: Props) {
 
   const poke = () => {
     if (s.current.mood === 'sleep') { say('tocarDormint'); return }
+    if (s.current.mood === 'away' || s.current.mood === 'leave') return
+    // Too many taps in a short while: sometimes she gets cross and runs off.
+    const now = Date.now()
+    taps.current = [...taps.current.filter((t) => now - t < PIPA.annoyWindowMs), now]
+    if (taps.current.length > PIPA.annoyAfterTaps && Math.random() < PIPA.annoyChance) {
+      taps.current = []
+      say('enfadada')
+      const out = s.current.x < 0.5 ? -0.35 : 1.35
+      moveTo(out, true, () => {
+        setMood('away')
+        schedule(comeBack, rand(PIPA.awaySec[0], PIPA.awaySec[1]) * 1000)
+      }, true)
+      return
+    }
     say('tocar')
     if (IN_PLACE.includes(s.current.mood)) {
       setMood('happy')
       schedule(next, 1800)
     }
   }
+
+  // While she talks, keep the bubble over her even mid-walk (her `left` is
+  // being transitioned by CSS, so read where she actually is every frame).
+  useEffect(() => {
+    if (!speech) return
+    let raf = 0
+    const follow = () => {
+      const pet = petRef.current
+      const anchor = anchorRef.current
+      const tr = track.current
+      if (pet && anchor && tr) {
+        const w = tr.offsetWidth
+        const left = pet.offsetLeft
+        anchor.style.left = `${Math.max(w * 0.1, Math.min(w * 0.9, left))}px`
+        anchor.classList.toggle('l', left < w / 2)
+        anchor.classList.toggle('r', left >= w / 2)
+      }
+      raf = requestAnimationFrame(follow)
+    }
+    follow()
+    return () => cancelAnimationFrame(raf)
+  }, [speech])
 
   const pickUp = (id: number) => {
     setPoops((ps) => ps.map((p) => (p.id === id ? { ...p, gone: true } : p)))
@@ -230,7 +269,7 @@ export function Pet({ hidden, water }: Props) {
         ))}
       </div>
       <div ref={track} className={'pet-track' + (hidden ? ' hidden' : '')}>
-        <div className={`pet mood-${mood}`}
+        <div ref={petRef} className={`pet mood-${mood}`}
           style={{ left: `${x * 100}%`, transitionDuration: `${moveMs}ms` }}
           onClick={poke} role="button" aria-label="Pipa">
           <div className="pet-flip" style={{ transform: `scaleX(${facing})` }}>
@@ -246,8 +285,8 @@ export function Pet({ hidden, water }: Props) {
       {/* Speech lives in its own layer above the button (Pipa walks behind it). */}
       {speech && !hidden && (
         <div className="pet-say-track">
-          <div className="pet-say-anchor" style={{ left: `${Math.max(0.1, Math.min(0.9, x)) * 100}%`, transitionDuration: `${moveMs}ms` }}>
-            <span key={speech.id} className={'pet-say ' + (x < 0.5 ? 'l' : 'r')}>{speech.text}</span>
+          <div ref={anchorRef} className="pet-say-anchor">
+            <span key={speech.id} className="pet-say">{speech.text}</span>
           </div>
         </div>
       )}
@@ -268,7 +307,7 @@ function PoopSvg() {
 }
 
 /** Apricot toy poodle facing right. Parts have classes so CSS can animate them. */
-function PoodleSvg() {
+export function PoodleSvg() {
   const fur = '#f2c48d'
   const furDark = '#e2a96b'
   return (

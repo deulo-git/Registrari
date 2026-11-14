@@ -1,5 +1,5 @@
 /** Every kind of record the app keeps. Order = order in the add menu. */
-export const ENTRY_TYPES = ['water', 'meal', 'symptom', 'bowel', 'gas', 'medication', 'document'] as const
+export const ENTRY_TYPES = ['water', 'meal', 'symptom', 'bowel', 'gas', 'medication', 'appointment', 'document'] as const
 export type EntryType = (typeof ENTRY_TYPES)[number]
 
 /** One colour per entry type, used everywhere (bubbles, timeline, calendar, PDF). */
@@ -10,6 +10,7 @@ export const TYPE_COLOR: Record<EntryType, string> = {
   bowel: '#92400e',
   gas: '#7c3aed',
   medication: '#db2777',
+  appointment: '#0d9488',
   document: '#475569',
 }
 
@@ -36,7 +37,32 @@ export const MEAL_KINDS = ['breakfast', 'midmorning', 'lunch', 'snack', 'dinner'
 export type MealKind = (typeof MEAL_KINDS)[number]
 export interface MealData { meal: MealKind; items: FoodItem[]; notes?: string }
 
-export interface SymptomData { category: string; intensity: number; durationMin?: number; allDay?: boolean; notes?: string }
+export interface SymptomItem { category: string; intensity: number }
+/**
+ * One entry can hold several symptoms felt at the same time (symptoms[]).
+ * Entries saved before that have a single category/intensity instead: read
+ * them through symptomList().
+ */
+export interface SymptomData {
+  symptoms?: SymptomItem[]
+  category?: string
+  intensity?: number
+  durationMin?: number
+  allDay?: boolean
+  notes?: string
+}
+export function symptomList(d: SymptomData): SymptomItem[] {
+  if (d.symptoms?.length) return d.symptoms
+  return d.category ? [{ category: d.category, intensity: d.intensity ?? 0 }] : []
+}
+/**
+ * Symptoms with a built-in description (guide in the symptom form). The
+ * first ones are the defaults in settings; the rest can be picked from the guide.
+ */
+export const SYMPTOM_GUIDE = [
+  'abdominal_pain', 'bloating', 'cramps', 'nausea', 'reflux', 'early_satiety', 'appetite_loss',
+  'tenesmus', 'rectal_pain', 'fatigue', 'other',
+] as const
 
 export type BloodLevel = 'none' | 'little' | 'lot'
 export interface BowelData {
@@ -59,7 +85,28 @@ export interface MedicationData { name: string; dose?: string; unit?: string; no
 export interface StoredFile { path: string; name: string; mime: string; size: number }
 export const DOC_KINDS = ['prescription', 'result', 'analysis', 'report', 'other'] as const
 export type DocKind = (typeof DOC_KINDS)[number]
-export interface DocumentData { kind: DocKind; title: string; files: StoredFile[]; notes?: string }
+export interface DocumentData {
+  kind: DocKind
+  title: string
+  files: StoredFile[]
+  notes?: string
+  /** Linked medical appointment (entry id) and its label when linked. */
+  appointmentId?: string
+  appointmentLabel?: string
+}
+
+export const APPOINTMENT_KINDS = [
+  'consultation', 'colonoscopy', 'gastroscopy', 'analysis', 'imaging', 'emergency', 'other',
+] as const
+export type AppointmentKind = (typeof APPOINTMENT_KINDS)[number]
+export interface AppointmentData {
+  kind: AppointmentKind
+  /** Free text for "other" or to be more precise (e.g. "Ecografia abdominal"). */
+  title?: string
+  place?: string
+  doctor?: string
+  notes?: string
+}
 
 export interface DataByType {
   water: WaterData
@@ -68,6 +115,7 @@ export interface DataByType {
   bowel: BowelData
   gas: GasData
   medication: MedicationData
+  appointment: AppointmentData
   document: DocumentData
 }
 

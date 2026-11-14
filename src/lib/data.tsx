@@ -5,6 +5,8 @@ import { usePin } from './pin'
 
 interface ConfigApi {
   config: Config
+  /** True once the first load finished (or failed), for the loading screen. */
+  loaded: boolean
   /** Saves the whole config (PIN-protected). Resolves false when cancelled. */
   updateConfig: (c: Config) => Promise<boolean>
 }
@@ -13,9 +15,10 @@ const Ctx = createContext<ConfigApi | null>(null)
 export function ConfigProvider({ children }: { children: ReactNode }) {
   const { withPin } = usePin()
   const [config, setConfig] = useState<Config>(DEFAULT_CONFIG)
+  const [loaded, setLoaded] = useState(false)
 
   useEffect(() => {
-    const load = () => fetchConfig().then(setConfig).catch(() => {})
+    const load = () => fetchConfig().then(setConfig).catch(() => {}).finally(() => setLoaded(true))
     load()
     const onVis = () => { if (document.visibilityState === 'visible') load() }
     document.addEventListener('visibilitychange', onVis)
@@ -28,7 +31,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
     return !!r
   }, [withPin])
 
-  return <Ctx.Provider value={{ config, updateConfig }}>{children}</Ctx.Provider>
+  return <Ctx.Provider value={{ config, loaded, updateConfig }}>{children}</Ctx.Provider>
 }
 
 export function useConfig() {
@@ -42,21 +45,25 @@ export function useConfig() {
  * app comes back to the foreground (another phone may have added something).
  */
 export function useEntries(from: Date, to: Date, types?: EntryType[]) {
-  const [entries, setEntries] = useState<Entry[]>([])
-  const [loading, setLoading] = useState(true)
+  // Entries are tagged with the range they belong to, so a screen never shows
+  // the previous day's entries under the new day while the new ones load.
+  const [state, setState] = useState<{ key: string; entries: Entry[] }>({ key: '', entries: [] })
   const fromMs = from.getTime()
   const toMs = to.getTime()
   const typesKey = types?.join(',') ?? ''
+  const key = `${fromMs}|${toMs}|${typesKey}`
 
   useEffect(() => {
     let alive = true
     const load = () => {
       fetchEntries(new Date(fromMs), new Date(toMs), typesKey ? (typesKey.split(',') as EntryType[]) : undefined)
-        .then((r) => { if (alive) setEntries(r) })
-        .catch(() => {})
-        .finally(() => { if (alive) setLoading(false) })
+        .then((r) => { if (alive) setState({ key: `${fromMs}|${toMs}|${typesKey}`, entries: r }) })
+        .catch(() => {
+          // Offline: keep what this range already had; never reuse another range's entries.
+          const k = `${fromMs}|${toMs}|${typesKey}`
+          if (alive) setState((s) => (s.key === k ? s : { key: k, entries: [] }))
+        })
     }
-    setLoading(true)
     load()
     const off = onDataChange(load)
     const onVis = () => { if (document.visibilityState === 'visible') load() }
@@ -64,5 +71,6 @@ export function useEntries(from: Date, to: Date, types?: EntryType[]) {
     return () => { alive = false; off(); document.removeEventListener('visibilitychange', onVis) }
   }, [fromMs, toMs, typesKey])
 
-  return { entries, loading }
+  const ready = state.key === key
+  return { entries: ready ? state.entries : [], loading: !ready }
 }

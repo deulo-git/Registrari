@@ -2,7 +2,7 @@ import { jsPDF } from 'jspdf'
 import { autoTable } from 'jspdf-autotable'
 import { describe, dayKey, fmtDate, fmtMl, fmtTime, parseDayKey } from './format'
 import {
-  GAS_LABELS, TYPE_COLOR, isPlainWater, mealTotals,
+  GAS_LABELS, TYPE_COLOR, isPlainWater, mealTotals, symptomList,
   type BowelData, type Config, type Entry, type EntryType, type GasData, type MealData, type SymptomData, type WaterData,
 } from './types'
 import type { TKey } from './i18n'
@@ -113,8 +113,9 @@ export function buildReport(o: Opts): { blob: Blob; filename: string } {
   if (has('symptom')) cols.push({ key: 'symptom', label: t('symptoms'), cell: (es) => {
     const ss = es.filter((e) => e.type === 'symptom')
     if (!ss.length) return '-'
-    const max = Math.max(...ss.map((e) => (e.data as SymptomData).intensity))
-    return `${ss.length} (${t('maxShort')} ${max}/10)`
+    const all = ss.flatMap((e) => symptomList(e.data as SymptomData))
+    const max = Math.max(0, ...all.map((s) => s.intensity))
+    return `${all.length} (${t('maxShort')} ${max}/10)`
   } })
   if (has('bowel')) cols.push({ key: 'bowel', label: t('bowels'), cell: (es) => {
     const bs = es.filter((e) => e.type === 'bowel')
@@ -126,6 +127,10 @@ export function buildReport(o: Opts): { blob: Blob; filename: string } {
     const gs = es.filter((e) => e.type === 'gas')
     if (!gs.length) return '-'
     return GAS_LABELS[Math.max(...gs.map((e) => (e.data as GasData).level))]
+  } })
+  if (has('appointment')) cols.push({ key: 'appointment', label: t('appts'), cell: (es) => {
+    const n = es.filter((e) => e.type === 'appointment').length
+    return n ? String(n) : '-'
   } })
   if (has('medication')) cols.push({ key: 'medication', label: t('meds'), cell: (es) => {
     const n = es.filter((e) => e.type === 'medication').length

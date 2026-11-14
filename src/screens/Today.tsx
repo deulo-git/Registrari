@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useEntries, useConfig } from '../lib/data'
 import { useI18n, type TKey } from '../lib/i18n'
 import { addDays, cap, fmtDate, sameDay, startOfDay } from '../lib/format'
@@ -9,6 +9,8 @@ import { Timeline } from '../components/Timeline'
 import { ChevronLeft, ChevronRight, TypeIcon } from '../components/Icons'
 
 interface Props {
+  /** False while another tab is shown (the screen stays mounted so Pipa carries on). */
+  active: boolean
   day: Date
   setDay: (d: Date) => void
   onAdd: (t: EntryType) => void
@@ -17,6 +19,8 @@ interface Props {
 
 /** Horizontal drag (px) that changes the day when released. */
 const SWIPE = 45
+/** How long the old day takes to slide out before the new one slides in. */
+const OUT_MS = 170
 
 /**
  * Today screen, sized to the viewport (no page scroll): day picker on top,
@@ -24,12 +28,15 @@ const SWIPE = 45
  * their own scroll area. The entries follow the finger while swiping
  * left/right. Tapping empty space calls Pipa back when she has wandered off.
  */
-export function Today({ day, setDay, onAdd, onEdit }: Props) {
+export function Today({ active, day, setDay, onAdd, onEdit }: Props) {
   const { t, locale } = useI18n()
   const { config } = useConfig()
   const [open, setOpen] = useState(false)
   const [slide, setSlide] = useState<'' | 'from-left' | 'from-right'>('')
   const [drag, setDrag] = useState(0)
+  /** -1/1 while the current day slides out to the right/left. */
+  const [leaving, setLeaving] = useState(0)
+  const [entering, setEntering] = useState(true)
   const from = useMemo(() => startOfDay(day), [day])
   const to = useMemo(() => addDays(from, 1), [from])
   const { entries } = useEntries(from, to)
@@ -43,15 +50,38 @@ export function Today({ day, setDay, onAdd, onEdit }: Props) {
   const water = waterMl / (config.waterGoalMl || 2000)
   const counts = ENTRY_TYPES.map((ty) => ({ ty, n: entries.filter((e) => e.type === ty).length })).filter((c) => c.n)
 
+  // Coming back to this tab: play the entrance animation again (Pipa is not
+  // re-created, she just carries on).
+  const wasActive = useRef(active)
+  useEffect(() => {
+    if (active && !wasActive.current) setEntering(true)
+    wasActive.current = active
+  }, [active])
+  useEffect(() => {
+    if (!entering) return
+    const h = window.setTimeout(() => setEntering(false), 900)
+    return () => window.clearTimeout(h)
+  }, [entering])
+
+  /**
+   * Change day in two steps: the current day slides out (OUT_MS), then the
+   * new one slides in from the other side. One movement, no jump back.
+   */
+  const changeTo = (target: Date, forward: boolean) => {
+    if (leaving) return
+    setLeaving(forward ? 1 : -1)
+    window.setTimeout(() => {
+      setSlide(forward ? 'from-right' : 'from-left')
+      setDay(target)
+      setLeaving(0)
+      setDrag(0)
+    }, OUT_MS)
+  }
   const go = (delta: number) => {
     if (delta > 0 && isToday) return
-    setSlide(delta > 0 ? 'from-right' : 'from-left')
-    setDay(addDays(day, delta))
+    changeTo(addDays(day, delta), delta > 0)
   }
-  const goToday = () => {
-    setSlide('from-right')
-    setDay(startOfDay(new Date()))
-  }
+  const goToday = () => changeTo(startOfDay(new Date()), true)
 
   // ── Swipe: the content follows the finger, release past SWIPE to change day ──
   const touch = useRef<{ x: number; y: number; horizontal: boolean | null } | null>(null)
@@ -72,20 +102,22 @@ export function Today({ day, setDay, onAdd, onEdit }: Props) {
   const onTouchEnd = (e: React.TouchEvent) => {
     const s = touch.current
     touch.current = null
-    setDrag(0)
-    if (!s?.horizontal || open) return
+    if (!s?.horizontal || open) { setDrag(0); return }
     const dx = e.changedTouches[0].clientX - s.x
-    if (Math.abs(dx) > SWIPE) go(dx < 0 ? 1 : -1)
+    const delta = dx < 0 ? 1 : -1
+    // Carry on in the same direction from where the finger left it.
+    if (Math.abs(dx) > SWIPE && !(delta > 0 && isToday)) go(delta)
+    else setDrag(0)
   }
 
   return (
-    <div className="screen today-screen" onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
+    <div className={'screen today-screen' + (entering ? ' entering' : '')} onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
       onTouchCancel={() => { touch.current = null; setDrag(0) }}>
       <div className="day-nav" aria-hidden={open}>
         <button type="button" className="day-arrow" onClick={() => go(-1)} aria-label="←"><ChevronLeft size={26} /></button>
         <div className={'day-title ' + slide} key={day.getTime()}>
           <strong>{isToday ? t('today') : isYesterday ? t('yesterday') : cap(fmtDate(day, locale, { weekday: 'long' }))}</strong>
-          <small>{fmtDate(day, locale)}</small>
+          <small>{isToday ? fmtDate(day, locale) : fmtDate(day, locale, { day: 'numeric', month: 'short', year: 'numeric' })}</small>
         </div>
         {!isToday && (
           <button type="button" className="today-pill" onClick={goToday}>{t('backToToday')}</button>
@@ -96,12 +128,14 @@ export function Today({ day, setDay, onAdd, onEdit }: Props) {
       <section className="hero" onClick={(e) => {
         if (!(e.target as HTMLElement).closest('.add-hub, .pet, .poop')) callPet()
       }}>
-        <Pet hidden={open} water={water} />
+        <Pet hidden={open || !active} water={water} />
         <AddButton open={open} setOpen={setOpen} onPick={onAdd} waterProgress={water} />
       </section>
 
       <div className={'day-content ' + slide} key={'c' + day.getTime()}
-        style={{ transform: drag ? `translateX(${drag}px)` : undefined, transition: drag ? 'none' : undefined }}>
+        style={leaving
+          ? { transform: `translateX(${leaving > 0 ? -60 : 60}%)`, opacity: 0, transition: `transform ${OUT_MS}ms ease-in, opacity ${OUT_MS}ms ease-in` }
+          : drag ? { transform: `translateX(${drag}px)`, transition: 'none' } : undefined}>
         {counts.length > 0 && (
           <div className="day-counts">
             {counts.map(({ ty, n }, i) => (

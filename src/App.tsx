@@ -11,6 +11,7 @@ import { Settings } from './screens/Settings'
 import { EntrySheet } from './components/EntrySheet'
 import { ToastHost } from './components/Toast'
 import { ConfirmHost } from './components/Confirm'
+import { Splash } from './components/Splash'
 import { CalendarIcon, FolderIcon, HomeIcon, SettingsIcon } from './components/Icons'
 
 type Tab = 'today' | 'calendar' | 'documents' | 'settings'
@@ -32,13 +33,15 @@ function Shell() {
   ]
 
   return (
-    <div className="app">
+    <div className={'app' + (tab === 'today' ? ' on-today' : '')}>
       <header className="topbar">
         <span className="brand"><span className="brand-mark" />{t('appName')}</span>
       </header>
 
       <main>
-        {tab === 'today' && <Today day={day} setDay={setDay} onAdd={(ty) => add(ty)} onEdit={edit} />}
+        <div className="tab-today" hidden={tab !== 'today'}>
+          <Today active={tab === 'today'} day={day} setDay={setDay} onAdd={(ty) => add(ty)} onEdit={edit} />
+        </div>
         {tab === 'calendar' && (
           <Calendar onEdit={edit} onOpenDay={(d) => { setDay(startOfDay(d)); setTab('today') }} />
         )}
@@ -61,6 +64,7 @@ function Shell() {
         <EntrySheet key={sheet.entry?.id ?? sheet.type} type={sheet.type} entry={sheet.entry}
           defaultDate={sheet.date} onClose={() => setSheet(null)} />
       )}
+      <Splash />
       <ToastHost />
       <ConfirmHost />
     </div>

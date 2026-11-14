@@ -34,6 +34,7 @@ const MOVE_IDS: Record<string, Mood> = {
 
 export type PhraseList =
   | 'tocar' | 'tocarDormint' | 'sola' | 'set' | 'desar' | 'aiguaPlena' | 'cridada' | 'caca' | 'cacaRecollida'
+  | 'benvinguda' | 'enfadada'
 
 interface Phrase { pes?: number; ca?: string; es?: string }
 
@@ -41,6 +42,8 @@ const cfg = data as unknown as {
   parlar: { cadaSegons: [number, number]; duradaSegons: number; probabilitatSetSiPocaAigua: number }
   fora: { segons: [number, number] }
   caca: { maximALaVegada: number }
+  enfadar: { despresDeTocs: number; finestraSegons: number; probabilitat: number }
+  carrega: { minimSegons: number }
   moviments: { dia: Record<string, number>; nit: Record<string, number> }
   frases: Record<PhraseList, Phrase[]>
 }
@@ -51,6 +54,10 @@ export const PIPA = {
   thirstyChance: cfg.parlar?.probabilitatSetSiPocaAigua ?? 0.5,
   awaySec: cfg.fora?.segons ?? [25, 70],
   maxPoops: cfg.caca?.maximALaVegada ?? 2,
+  annoyAfterTaps: cfg.enfadar?.despresDeTocs ?? 5,
+  annoyWindowMs: (cfg.enfadar?.finestraSegons ?? 20) * 1000,
+  annoyChance: cfg.enfadar?.probabilitat ?? 0.1,
+  splashMinMs: (cfg.carrega?.minimSegons ?? 1.8) * 1000,
 }
 
 function weighted<T>(items: [T, number][]): T | undefined {

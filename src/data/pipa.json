@@ -5,9 +5,12 @@
     "Cada frase té el text en català (ca) i en castellà (es). Si en falta un, es fa servir l'altre.",
     "Les llistes de 'frases': tocar (quan la toques), tocarDormint (si la toques mentre dorm), sola (quan parla sense que la toquis),",
     "set (si hi ha poca aigua), desar (quan es desa un registre), aiguaPlena (si ja s'ha arribat a l'objectiu d'aigua),",
-    "cridada (quan no hi és i la crides tocant la pantalla), caca (quan ha fet caca), cacaRecollida (quan la recollim).",
+    "cridada (quan no hi és i la crides tocant la pantalla), caca (quan ha fet caca), cacaRecollida (quan la recollim),",
+    "benvinguda (pantalla de càrrega en obrir l'app), enfadada (quan la toques massa i s'enfada).",
     "'moviments' són els pesos de cada cosa que pot fer, de dia i de nit. Posa 0 per desactivar-ne una.",
-    "'parlar.cadaSegons' = cada quant parla sola (mínim i màxim, en segons). 'fora.segons' = quant de temps pot estar fora de pantalla."
+    "'parlar.cadaSegons' = cada quant parla sola (mínim i màxim, en segons). 'fora.segons' = quant de temps pot estar fora de pantalla.",
+    "'enfadar': si la toques més de 'despresDeTocs' vegades en 'finestraSegons' segons, cada toc més té 'probabilitat' (0-1) que s'enfadi i marxi corrent.",
+    "'carrega.minimSegons' = quant dura com a mínim la pantalla de càrrega."
   ],
 
   "parlar": {
@@ -22,6 +25,16 @@
 
   "caca": {
     "maximALaVegada": 2
+  },
+
+  "enfadar": {
+    "despresDeTocs": 5,
+    "finestraSegons": 20,
+    "probabilitat": 0.1
+  },
+
+  "carrega": {
+    "minimSegons": 1.8
   },
 
   "moviments": {
@@ -106,6 +119,17 @@
     "caca": [
       { "pes": 5, "ca": "Mira, he fet el número 2", "es": "Mira, he hecho el número 2" },
       { "pes": 1, "ca": "Ups… perdó!", "es": "Ups… ¡perdón!" }
+    ],
+    "benvinguda": [
+      { "pes": 3, "ca": "Hola! Ja soc aquí!", "es": "¡Hola! ¡Ya estoy aquí!" },
+      { "pes": 2, "ca": "Benvinguda! Com estàs avui?", "es": "¡Bienvenida! ¿Cómo estás hoy?" },
+      { "pes": 2, "ca": "Guau! Quines ganes de veure't!", "es": "¡Guau! ¡Qué ganas de verte!" },
+      { "pes": 1, "ca": "Em dic Pipa, i tu ets la millor", "es": "Me llamo Pipa, y tú eres la mejor" },
+      { "pes": 1, "ca": "En Sergi t'estima ❤", "es": "Sergi te quiere ❤" }
+    ],
+    "enfadada": [
+      { "pes": 5, "ca": "No m'empipis!", "es": "¡No me molestes!" },
+      { "pes": 1, "ca": "Prou! Me'n vaig!", "es": "¡Basta! ¡Me voy!" }
     ],
     "cacaRecollida": [
       { "pes": 3, "ca": "Gràcies!", "es": "¡Gracias!" },

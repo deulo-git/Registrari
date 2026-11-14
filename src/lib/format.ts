@@ -1,6 +1,6 @@
 import {
-  GAS_LABELS, mealTotals,
-  type BowelData, type DocumentData, type Entry, type GasData, type MealData,
+  GAS_LABELS, mealTotals, symptomList,
+  type AppointmentData, type BowelData, type DocumentData, type Entry, type GasData, type MealData,
   type MedicationData, type SymptomData, type WaterData,
 } from './types'
 import type { TKey } from './i18n'
@@ -36,6 +36,11 @@ export function fmtMl(ml: number) {
 const r1 = (n: number) => Math.round(n * 10) / 10
 
 type T = (k: TKey) => string
+
+/** Short label for an appointment: its own title, or the kind. */
+export function apptLabel(d: AppointmentData, t: T) {
+  return d.title?.trim() || t(`appt_${d.kind}` as TKey)
+}
 export interface Labels { symptomLabel: (c: string) => string; liquidLabel: (k?: string) => string }
 
 /**
@@ -70,8 +75,8 @@ export function describe(e: Entry, t: T, { symptomLabel, liquidLabel }: Labels, 
     }
     case 'symptom': {
       const d = e.data as SymptomData
-      parts.push(symptomLabel(d.category))
-      parts.push(`${t('intensity')} ${d.intensity}/10`)
+      // "Dolor abdominal 6/10 · Inflor 4/10"
+      parts.push(symptomList(d).map((s) => `${symptomLabel(s.category)} ${s.intensity}/10`).join(' · '))
       if (d.allDay) parts.push(t('allDay').toLocaleLowerCase())
       else if (d.durationMin) parts.push(`${d.durationMin} ${t('minutes')}`)
       notes = d.notes
@@ -104,6 +109,16 @@ export function describe(e: Entry, t: T, { symptomLabel, liquidLabel }: Labels, 
       const d = e.data as DocumentData
       parts.push(`${t(`doc_${d.kind}` as TKey)}: ${d.title || '—'}`)
       if (d.files?.length) parts.push(`${d.files.length} ${t('files').toLowerCase()}`)
+      if (d.appointmentLabel) parts.push(`${t('linkedAppt')}: ${d.appointmentLabel}`)
+      notes = d.notes
+      break
+    }
+    case 'appointment': {
+      const d = e.data as AppointmentData
+      parts.push(apptLabel(d, t))
+      if (d.title?.trim()) parts.push(t(`appt_${d.kind}` as TKey))
+      if (d.place?.trim()) parts.push(d.place.trim())
+      if (d.doctor?.trim()) parts.push(d.doctor.trim())
       notes = d.notes
       break
     }

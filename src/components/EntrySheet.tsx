@@ -1,16 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
-  DOC_KINDS, GAS_LABELS, LIQUID_KINDS, MEAL_KINDS, TYPE_COLOR, mealTotals,
-  type BowelData, type DataByType, type DocumentData, type Entry, type EntryType, type FoodItem,
-  type GasData, type MealData, type MealKind, type MedicationData, type StoredFile, type SymptomData, type WaterData,
+  APPOINTMENT_KINDS, DOC_KINDS, GAS_LABELS, LIQUID_KINDS, MEAL_KINDS, SYMPTOM_GUIDE, TYPE_COLOR, mealTotals, symptomList,
+  type AppointmentData, type BowelData, type DataByType, type DocumentData, type Entry, type EntryType, type FoodItem,
+  type GasData, type MealData, type MealKind, type MedicationData, type StoredFile, type SymptomData, type SymptomItem,
+  type WaterData,
 } from '../lib/types'
 import { useI18n, type TKey } from '../lib/i18n'
 import { useConfig } from '../lib/data'
 import { usePin } from '../lib/pin'
-import { ApiError, deleteEntry, estimateNutrition, fileUrl, saveEntry, uploadFile } from '../lib/api'
-import { fmtMl, fromLocalInput, toLocalInput } from '../lib/format'
+import { deleteEntry, estimateNutrition, fileUrl, saveEntry, supabase, uploadFile } from '../lib/api'
+import { apptLabel, fmtDate, fmtMl, fromLocalInput, toLocalInput } from '../lib/format'
 import { matching, useSuggestions } from '../lib/suggestions'
-import { CameraIcon, CloseIcon, FileIcon, PlusIcon, SparkleIcon, TrashIcon, TypeIcon } from './Icons'
+import { CameraIcon, CloseIcon, FileIcon, PlusIcon, TrashIcon, TypeIcon } from './Icons'
 import { BristolIcon } from './Bristol'
 import { toast } from './Toast'
 import { cheerPet } from './Pet'
@@ -37,10 +38,11 @@ function defaults(type: EntryType, when: Date, glassMl: number): DataByType[Entr
   switch (type) {
     case 'water': return { ml: glassMl, kind: 'water' } satisfies WaterData
     case 'meal': return { meal: defaultMeal(when), items: [{ name: '', qty: undefined, unit: 'g' }] } satisfies MealData
-    case 'symptom': return { category: '', intensity: 5 } satisfies SymptomData
+    case 'symptom': return { symptoms: [] } satisfies SymptomData
     case 'bowel': return { bristol: 4, blood: 'none', effort: 0 } satisfies BowelData
     case 'gas': return { level: 0 } satisfies GasData
     case 'medication': return { name: '', dose: '', unit: '' } satisfies MedicationData
+    case 'appointment': return { kind: 'consultation' } satisfies AppointmentData
     case 'document': return { kind: 'result', title: '', files: [] } satisfies DocumentData
   }
 }
@@ -51,25 +53,23 @@ const hasNutrients = (i: FoodItem) =>
   [i.kcal, i.protein, i.carbs, i.fat, i.fiber].some((v) => v !== undefined && v !== null)
 
 /**
- * Asks the AI for the foods that have no nutrient values yet and merges the
- * answer in. Foods already filled (by hand or by an earlier estimate) are kept
- * as they are. Never blocks saving: on failure the meal is saved without them.
+ * After a meal is saved, ask the AI (in the background, never blocking the
+ * save) for the foods that have no nutrient values yet, and update the entry
+ * if it answers. Any failure is ignored: the meal is already saved.
  */
-async function fillNutrients(pin: string, lang: string, items: FoodItem[]): Promise<FoodItem[]> {
-  const missing = items.map((it, i) => ({ it, i })).filter(({ it }) => !hasNutrients(it))
-  if (!missing.length) return items
-  try {
-    const est = await estimateNutrition(pin, lang, missing.map((m) => m.it))
-    const out = [...items]
-    missing.forEach(({ it, i }, n) => {
-      const e = est[n]
-      if (e) out[i] = { ...it, qty: it.qty ?? e.qty, unit: it.qty ? it.unit : e.unit, kcal: e.kcal, protein: e.protein, carbs: e.carbs, fat: e.fat, fiber: e.fiber }
+function enrichMealLater(pin: string, lang: string, id: string, occurredAt: string, meal: MealData) {
+  const missing = meal.items.map((it, i) => ({ it, i })).filter(({ it }) => !hasNutrients(it))
+  if (!missing.length) return
+  estimateNutrition(pin, lang, missing.map((m) => m.it))
+    .then((est) => {
+      const items = [...meal.items]
+      missing.forEach(({ it, i }, n) => {
+        const e = est[n]
+        if (e) items[i] = { ...it, qty: it.qty ?? e.qty, unit: it.qty ? it.unit : e.unit, kcal: e.kcal, protein: e.protein, carbs: e.carbs, fat: e.fat, fiber: e.fiber }
+      })
+      return saveEntry(pin, { id, type: 'meal', occurred_at: occurredAt, data: { ...meal, items } })
     })
-    return out
-  } catch (e) {
-    if (e instanceof ApiError && (e.code === 'bad_pin' || e.code === 'locked')) throw e
-    return items
-  }
+    .catch(() => { /* the meal stays saved without nutrients */ })
 }
 
 export function EntrySheet({ type, entry, defaultDate, onClose }: Props) {
@@ -85,7 +85,11 @@ export function EntrySheet({ type, entry, defaultDate, onClose }: Props) {
   }, [entry, defaultDate])
   const [when, setWhen] = useState(toLocalInput(initialWhen))
   const [data, setData] = useState<DataByType[EntryType]>(() =>
-    entry ? structuredClone(entry.data) : defaults(type, initialWhen, config.glassMl))
+    entry
+      ? (type === 'symptom'
+        ? { ...structuredClone(entry.data as SymptomData), symptoms: symptomList(entry.data as SymptomData), category: undefined, intensity: undefined }
+        : structuredClone(entry.data))
+      : defaults(type, initialWhen, config.glassMl))
   const [pendingFiles, setPendingFiles] = useState<File[]>([])
   const [busy, setBusy] = useState(false)
   const color = TYPE_COLOR[type]
@@ -101,7 +105,7 @@ export function EntrySheet({ type, entry, defaultDate, onClose }: Props) {
     switch (type) {
       case 'water': return (data as WaterData).ml > 0
       case 'meal': return (data as MealData).items.some((i) => i.name.trim())
-      case 'symptom': return !!(data as SymptomData).category
+      case 'symptom': return symptomList(data as SymptomData).length > 0
       case 'medication': return !!(data as MedicationData).name.trim()
       case 'document': {
         const d = data as DocumentData
@@ -119,15 +123,16 @@ export function EntrySheet({ type, entry, defaultDate, onClose }: Props) {
         let payload = data
         if (type === 'meal') {
           const m = data as MealData
-          const items = m.items.filter((i) => i.name.trim())
-          payload = { ...m, items: await fillNutrients(pin, lang, items) }
+          payload = { ...m, items: m.items.filter((i) => i.name.trim()) }
         }
         if (type === 'document' && pendingFiles.length) {
           const uploaded: StoredFile[] = []
           for (const f of pendingFiles) uploaded.push(await uploadFile(pin, f))
           payload = { ...(data as DocumentData), files: [...(data as DocumentData).files, ...uploaded] }
         }
-        await saveEntry(pin, { id: entry?.id, type, occurred_at: fromLocalInput(when).toISOString(), data: payload })
+        const occurredAt = fromLocalInput(when).toISOString()
+        const id = await saveEntry(pin, { id: entry?.id, type, occurred_at: occurredAt, data: payload })
+        if (type === 'meal') enrichMealLater(pin, lang, id, occurredAt, payload as MealData)
         return true
       })
       if (ok) { toast(t('saved')); cheerPet(); onClose() }
@@ -184,6 +189,7 @@ export function EntrySheet({ type, entry, defaultDate, onClose }: Props) {
           {type === 'bowel' && <BowelForm data={data as BowelData} set={setData} />}
           {type === 'gas' && <GasForm data={data as GasData} set={setData} />}
           {type === 'medication' && <MedicationForm data={data as MedicationData} set={setData} />}
+          {type === 'appointment' && <AppointmentForm data={data as AppointmentData} set={setData} entryId={entry?.id} />}
           {type === 'document' && (
             <DocumentForm data={data as DocumentData} set={setData} pending={pendingFiles} setPending={setPendingFiles} />
           )}
@@ -313,42 +319,16 @@ function WaterForm({ data, set, glassMl }: { data: WaterData; set: SetData; glas
 // ── Meal ──
 
 function MealForm({ data, set }: { data: MealData; set: SetData }) {
-  const { t, lang } = useI18n()
-  const { withPin } = usePin()
+  const { t } = useI18n()
   const sugg = useSuggestions()
   const [open, setOpen] = useState<number | null>(null)
   const [focused, setFocused] = useState<number | null>(null)
-  const [aiBusy, setAiBusy] = useState(false)
   const items = data.items
   const update = (i: number, patch: Partial<FoodItem>) =>
     set({ ...data, items: items.map((it, j) => (j === i ? { ...it, ...patch } : it)) })
   const tot = mealTotals(items)
   const hasTotals = tot.kcal || tot.protein || tot.carbs || tot.fat || tot.fiber
   const lastRef = useRef<HTMLInputElement>(null)
-  const named = items.filter((i) => i.name.trim())
-
-  /** Recalculates every named food (overwrites hand-typed values on purpose). */
-  const runAi = async () => {
-    if (!named.length || aiBusy) return
-    setAiBusy(true)
-    try {
-      const est = await withPin((pin) => estimateNutrition(pin, lang, named))
-      if (!est) return
-      let n = 0
-      set({
-        ...data,
-        items: items.map((it) => {
-          if (!it.name.trim()) return it
-          const e = est[n++]
-          return e ? { ...it, qty: it.qty ?? e.qty, unit: it.qty ? it.unit : e.unit, kcal: e.kcal, protein: e.protein, carbs: e.carbs, fat: e.fat, fiber: e.fiber } : it
-        }),
-      })
-      toast(t('aiDone'))
-    } catch (e) {
-      const code = e instanceof ApiError ? e.code : ''
-      if (code !== 'bad_pin' && code !== 'locked') toast(code === 'no_key' ? t('aiNoKey') : t('aiError'), 'error')
-    } finally { setAiBusy(false) }
-  }
 
   return (
     <>
@@ -417,10 +397,6 @@ function MealForm({ data, set }: { data: MealData; set: SetData }) {
           set({ ...data, items: [...items, { name: '', unit: 'g' }] })
           setTimeout(() => lastRef.current?.focus(), 30)
         }}><PlusIcon size={18} /> {t('addFood')}</button>
-        <button type="button" className="btn ai" onClick={runAi} disabled={!named.length || aiBusy}>
-          <SparkleIcon size={18} /> {aiBusy ? t('aiCalculating') : t('aiCalc')}
-        </button>
-        {named.some((i) => !hasNutrients(i)) && <small className="muted">{t('aiHint')}</small>}
       </div>
 
       {hasTotals ? (
@@ -449,20 +425,47 @@ function intensityColor(n: number) {
 
 function SymptomForm({ data, set, categories }: { data: SymptomData; set: SetData; categories: string[] }) {
   const { t, symptomLabel } = useI18n()
+  const [guide, setGuide] = useState(false)
+  const list = symptomList(data)
+  const chosen = new Set(list.map((s) => s.category))
+  // Settings' categories plus any picked from the guide (or from an old entry).
+  const all = [...categories, ...list.map((s) => s.category).filter((c) => !categories.includes(c))]
+  const setList = (l: SymptomItem[]) => set({ ...data, symptoms: l, category: undefined, intensity: undefined })
+  const toggle = (c: string) =>
+    setList(chosen.has(c) ? list.filter((s) => s.category !== c) : [...list, { category: c, intensity: 5 }])
+  const setIntensity = (c: string, n: number) =>
+    setList(list.map((s) => (s.category === c ? { ...s, intensity: n } : s)))
+
   return (
     <>
-      <Chips label={t('category')} value={data.category} onChange={(v) => set({ ...data, category: v })}
-        options={categories.map((c) => ({ value: c, label: symptomLabel(c) }))} />
       <div className="field">
-        <span>{t('intensity')}</span>
-        <div className="slider-row">
-          <input type="range" min={0} max={10} step={1} value={data.intensity}
-            style={{ accentColor: intensityColor(data.intensity) }}
-            onChange={(e) => set({ ...data, intensity: Number(e.target.value) })} />
-          <b className="slider-val" style={{ color: intensityColor(data.intensity) }}>{data.intensity}</b>
+        <div className="field-head">
+          <span>{t('symptomsFelt')}</span>
+          <button type="button" className="info-btn" onClick={() => setGuide(true)}>ⓘ {t('symptomGuide')}</button>
         </div>
-        <div className="scale-labels"><small>0</small><small>5</small><small>10</small></div>
+        <div className="chips">
+          {all.map((c) => (
+            <button key={c} type="button" aria-pressed={chosen.has(c)}
+              className={'chip' + (chosen.has(c) ? ' on' : '')} onClick={() => toggle(c)}>
+              {symptomLabel(c)}
+            </button>
+          ))}
+        </div>
+        <small className="muted">{t('symptomsMultiHint')}</small>
       </div>
+
+      {list.map((s) => (
+        <div key={s.category} className="field sym-row">
+          <span>{symptomLabel(s.category)} · {t('intensity')}</span>
+          <div className="slider-row">
+            <input type="range" min={0} max={10} step={1} value={s.intensity}
+              style={{ accentColor: intensityColor(s.intensity) }}
+              onChange={(e) => setIntensity(s.category, Number(e.target.value))} />
+            <b className="slider-val" style={{ color: intensityColor(s.intensity) }}>{s.intensity}</b>
+          </div>
+        </div>
+      ))}
+
       <div className="field">
         <span>{t('duration')} ({t('optional')})</span>
         <div className="row">
@@ -476,9 +479,43 @@ function SymptomForm({ data, set, categories }: { data: SymptomData; set: SetDat
           </button>
         </div>
       </div>
+
+      {guide && <SymptomGuide chosen={chosen} onToggle={toggle} onClose={() => setGuide(false)} />}
     </>
   )
 }
+
+/** Plain-language description of each symptom, to pick the right one. */
+function SymptomGuide({ chosen, onToggle, onClose }: {
+  chosen: Set<string>; onToggle: (c: string) => void; onClose: () => void
+}) {
+  const { t, symptomLabel } = useI18n()
+  return (
+    <div className="guide-overlay" onClick={onClose}>
+      <div className="guide-box" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+        <header className="sheet-head">
+          <h2>{t('symptomGuide')}</h2>
+          <button type="button" className="icon-btn" onClick={onClose} aria-label={t('close')}><CloseIcon /></button>
+        </header>
+        <div className="guide-list">
+          <p className="muted">{t('symptomGuideIntro')}</p>
+          {SYMPTOM_GUIDE.map((k) => (
+            <div key={k} className={'guide-item' + (chosen.has(k) ? ' on' : '')}>
+              <div className="guide-text">
+                <strong>{symptomLabel(k)}</strong>
+                <p>{t(`symInfo_${k}` as TKey)}</p>
+              </div>
+              <button type="button" className={'chip' + (chosen.has(k) ? ' on' : '')} onClick={() => onToggle(k)}>
+                {chosen.has(k) ? '✓' : '+'}
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 
 // ── Bowel ──
 
@@ -608,6 +645,7 @@ function DocumentForm({ data, set, pending, setPending }: {
         <span>{t('title')}</span>
         <input value={data.title} onChange={(e) => set({ ...data, title: e.target.value })} />
       </label>
+      <AppointmentLink data={data} set={set} />
       <div className="field">
         <span>{t('files')}</span>
         <ul className="file-list">
@@ -641,5 +679,88 @@ function DocumentForm({ data, set, pending, setPending }: {
           onChange={(e) => { add(e.target.files); e.target.value = '' }} />
       </div>
     </>
+  )
+}
+
+// ── Appointment ──
+
+function AppointmentForm({ data, set, entryId }: { data: AppointmentData; set: SetData; entryId?: string }) {
+  const { t, locale } = useI18n()
+  const [docs, setDocs] = useState<Entry[]>([])
+  useEffect(() => {
+    if (!entryId) return
+    supabase.from('entries').select('*').eq('type', 'document').eq('data->>appointmentId', entryId)
+      .order('occurred_at', { ascending: false })
+      .then(({ data: rows }) => setDocs((rows as Entry[]) ?? []))
+  }, [entryId])
+  const openFile = async (f: StoredFile) => {
+    const w = window.open('', '_blank')
+    try { const u = await fileUrl(f.path); if (w) w.location.href = u; else window.location.href = u }
+    catch { w?.close(); toast(t('errorGeneric'), 'error') }
+  }
+  return (
+    <>
+      <Chips label={t('apptKind')} value={data.kind} onChange={(v) => set({ ...data, kind: v })}
+        options={APPOINTMENT_KINDS.map((k) => ({ value: k, label: t(`appt_${k}` as TKey) }))} />
+      <label className="field">
+        <span>{t('title')} ({t('optional')})</span>
+        <input value={data.title ?? ''} placeholder={t('apptTitleHint')} onChange={(e) => set({ ...data, title: e.target.value })} />
+      </label>
+      <div className="row">
+        <label className="field grow"><span>{t('place')}</span>
+          <input value={data.place ?? ''} onChange={(e) => set({ ...data, place: e.target.value })} /></label>
+        <label className="field grow"><span>{t('doctor')}</span>
+          <input value={data.doctor ?? ''} onChange={(e) => set({ ...data, doctor: e.target.value })} /></label>
+      </div>
+      {entryId && (
+        <div className="field">
+          <span>{t('linkedDocs')}</span>
+          {docs.length ? (
+            <ul className="file-list">
+              {docs.map((d) => {
+                const dd = d.data as DocumentData
+                return (
+                  <li key={d.id} className="linked-doc">
+                    <FileIcon size={18} />
+                    <span className="grow">{dd.title || t(`doc_${dd.kind}` as TKey)} · {fmtDate(new Date(d.occurred_at), locale, { day: 'numeric', month: 'short' })}</span>
+                    {dd.files?.map((f) => (
+                      <button key={f.path} type="button" className="link-btn" onClick={() => openFile(f)}>{t('open')}</button>
+                    ))}
+                  </li>
+                )
+              })}
+            </ul>
+          ) : <small className="muted">{t('noLinkedDocs')}</small>}
+        </div>
+      )}
+    </>
+  )
+}
+
+/** Appointment picker for a document (most recent first). */
+function AppointmentLink({ data, set }: { data: DocumentData; set: SetData }) {
+  const { t, locale } = useI18n()
+  const [appts, setAppts] = useState<Entry[]>([])
+  useEffect(() => {
+    supabase.from('entries').select('*').eq('type', 'appointment')
+      .order('occurred_at', { ascending: false }).limit(200)
+      .then(({ data: rows }) => setAppts((rows as Entry[]) ?? []))
+  }, [])
+  const label = (e: Entry) =>
+    `${fmtDate(new Date(e.occurred_at), locale, { day: 'numeric', month: 'short', year: 'numeric' })} · ${apptLabel(e.data as AppointmentData, t)}`
+  return (
+    <label className="field">
+      <span>{t('linkAppointment')}</span>
+      <select value={data.appointmentId ?? ''} onChange={(e) => {
+        const a = appts.find((x) => x.id === e.target.value)
+        set({ ...data, appointmentId: a?.id, appointmentLabel: a ? label(a) : undefined })
+      }}>
+        <option value="">{t('none')}</option>
+        {appts.map((a) => <option key={a.id} value={a.id}>{label(a)}</option>)}
+        {data.appointmentId && !appts.some((a) => a.id === data.appointmentId) && (
+          <option value={data.appointmentId}>{data.appointmentLabel ?? '…'}</option>
+        )}
+      </select>
+    </label>
   )
 }

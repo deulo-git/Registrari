@@ -37,6 +37,7 @@ export function Documents({ onAdd, onEdit }: { onAdd: () => void; onEdit: (e: En
                 <span className="doc-kind">{t(`doc_${d.kind}` as TKey)}</span>
                 <strong>{d.title || '—'}</strong>
                 <small>{fmtDate(new Date(e.occurred_at), locale)}</small>
+                {d.appointmentLabel && <span className="doc-appt">{t('linkedAppt')}: {d.appointmentLabel}</span>}
                 {d.notes && <p>{d.notes}</p>}
               </button>
               {d.files?.length > 0 && (

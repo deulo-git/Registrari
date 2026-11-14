@@ -40,6 +40,13 @@ const paths: Record<EntryType, React.ReactNode> = {
       <path d="M9.5 9.5l5 5" />
     </>
   ),
+  appointment: (
+    <>
+      <path d="M6 3v5a4 4 0 0 0 8 0V3" />
+      <path d="M10 12v3a5 5 0 0 0 10 0v-2" />
+      <circle cx="20" cy="11" r="2" />
+    </>
+  ),
   document: (
     <>
       <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
