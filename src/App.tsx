@@ -10,6 +10,7 @@ import { Documents } from './screens/Documents'
 import { Settings } from './screens/Settings'
 import { EntrySheet } from './components/EntrySheet'
 import { ToastHost } from './components/Toast'
+import { ConfirmHost } from './components/Confirm'
 import { CalendarIcon, FolderIcon, HomeIcon, SettingsIcon } from './components/Icons'
 
 type Tab = 'today' | 'calendar' | 'documents' | 'settings'
@@ -61,6 +62,7 @@ function Shell() {
           defaultDate={sheet.date} onClose={() => setSheet(null)} />
       )}
       <ToastHost />
+      <ConfirmHost />
     </div>
   )
 }

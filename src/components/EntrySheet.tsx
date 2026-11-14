@@ -14,6 +14,7 @@ import { CameraIcon, CloseIcon, FileIcon, PlusIcon, SparkleIcon, TrashIcon, Type
 import { BristolIcon } from './Bristol'
 import { toast } from './Toast'
 import { cheerPet } from './Pet'
+import { confirmDialog } from './Confirm'
 
 interface Props {
   type: EntryType
@@ -134,7 +135,12 @@ export function EntrySheet({ type, entry, defaultDate, onClose }: Props) {
   }
 
   const remove = async () => {
-    if (!entry || busy || !confirm(t('confirmDelete'))) return
+    if (!entry || busy) return
+    const yes = await confirmDialog({
+      title: t('confirmTitle'), message: t('confirmDelete'),
+      confirmLabel: t('delete'), cancelLabel: t('cancel'), danger: true,
+    })
+    if (!yes) return
     setBusy(true)
     try {
       const ok = await withPin(async (pin) => { await deleteEntry(pin, entry.id); return true })

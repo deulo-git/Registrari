@@ -472,3 +472,174 @@ main { padding: 0 16px; }
 .tchip { padding: 6px 10px; border-radius: 99px; background: var(--surface); border: 1px solid var(--line); font-size: 13px; font-weight: 500; font-variant-numeric: tabular-nums; }
 .tchip.on { background: var(--c, var(--accent)); color: #fff; border-color: transparent; }
 .tchip.now { background: var(--orange-soft); border-color: #fed7aa; color: #9a3412; }
+/* ════════════════ v0.4: layout, water button, more pet ════════════════ */
+
+/* No sideways scrolling anywhere (the pet and bubbles stay inside). */
+html, body { overflow-x: hidden; }
+.app { overflow-x: clip; }
+
+/* ── Today layout: day picker on top, button + pet pinned at the bottom ── */
+.today {
+  min-height: calc(100dvh - 44px - var(--tabbar-h) - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 16px);
+}
+.day-nav { position: sticky; top: calc(env(safe-area-inset-top) + 41px); z-index: 15; }
+.day-title { flex: 1; min-width: 0; }
+.day-title.from-right { animation: fromRight .28s ease; }
+.day-title.from-left { animation: fromLeft .28s ease; }
+.today-pill {
+  flex: none; padding: 8px 12px; border-radius: 99px; background: var(--accent); color: #fff;
+  font-weight: 600; font-size: 13px; box-shadow: 0 4px 10px rgba(34, 163, 90, .3);
+  animation: chipPop .35s cubic-bezier(.3, 1.6, .5, 1);
+}
+.day-content { display: flex; flex-direction: column; gap: 14px; transition: transform .28s cubic-bezier(.2, .9, .3, 1); will-change: transform; }
+.day-content.from-right { animation: fromRight .3s ease; }
+.day-content.from-left { animation: fromLeft .3s ease; }
+
+.hero {
+  position: sticky; bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom));
+  margin: auto -16px 0; padding: 46px 0 10px; z-index: 12;
+  background: linear-gradient(to top, var(--bg) 60%, rgba(240, 248, 242, 0));
+}
+.add-hub { z-index: 2; }
+.add-hub.open { z-index: 50; }
+.pet-track { z-index: 1; bottom: 10px; left: 0; right: 0; }
+
+/* ── The water inside the button ── */
+.add-main { overflow: hidden; isolation: isolate; }
+.add-main .water {
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 0;
+  background: linear-gradient(180deg, rgba(125, 211, 252, .95), rgba(2, 132, 199, .95));
+  transition: height 1.8s cubic-bezier(.22, 1, .36, 1);
+}
+.wave { position: absolute; left: 0; top: -11px; width: 200%; height: 12px; fill: rgba(125, 211, 252, .95); animation: waveMove 3s linear infinite; }
+.wave.w2 { top: -9px; fill: rgba(56, 189, 248, .55); animation-duration: 4.6s; animation-direction: reverse; }
+@keyframes waveMove { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+.add-plus { position: relative; z-index: 2; display: grid; filter: drop-shadow(0 2px 4px rgba(0, 0, 0, .25)); }
+.splash { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
+.splash i { position: absolute; bottom: 30%; left: 50%; width: 8px; height: 8px; border-radius: 50%; background: #e0f2fe; opacity: 0; animation: splash .9s ease-out .6s; }
+.splash i:nth-child(1) { --sx: -34px; } .splash i:nth-child(2) { --sx: -12px; animation-delay: .7s; }
+.splash i:nth-child(3) { --sx: 14px; animation-delay: .65s; } .splash i:nth-child(4) { --sx: 36px; animation-delay: .75s; }
+@keyframes splash { 0% { transform: translate(0, 0); opacity: 1; } 100% { transform: translate(var(--sx), -46px) scale(.4); opacity: 0; } }
+.add-hub.full .add-main { animation: breathe 3.4s ease-in-out infinite, fullGlow 2.4s ease-in-out infinite; }
+@keyframes fullGlow { 50% { box-shadow: 0 12px 30px rgba(34, 163, 90, .38), 0 0 0 8px rgba(56, 189, 248, .35), 0 0 26px rgba(56, 189, 248, .6); } }
+.ring-stars { inset: -10px; }
+
+/* ── Pet: speech bubble ── */
+.pet-say {
+  position: absolute; bottom: 92px; max-width: 190px; width: max-content;
+  background: #fff; color: var(--text); font-size: 13px; font-weight: 600; line-height: 1.25;
+  padding: 7px 11px; border-radius: 14px; box-shadow: 0 6px 18px rgba(21, 128, 61, .18);
+  pointer-events: none; animation: sayPop 3.2s ease forwards; z-index: 5;
+}
+.pet-say.l { left: 18px; }
+.pet-say.r { right: 18px; }
+.pet-say::after { content: ''; position: absolute; bottom: -6px; width: 12px; height: 12px; background: #fff; transform: rotate(45deg); border-radius: 2px; }
+.pet-say.l::after { left: 22px; }
+.pet-say.r::after { right: 22px; }
+@keyframes sayPop {
+  0% { transform: translateY(8px) scale(.6); opacity: 0; }
+  10% { transform: translateY(0) scale(1.05); opacity: 1; }
+  15%, 85% { transform: none; opacity: 1; }
+  100% { transform: translateY(-6px); opacity: 0; }
+}
+
+/* ── Pet: more moves ── */
+/* run */
+.mood-run .p-leg-fr, .mood-run .p-leg-bl { animation: stepA .17s ease-in-out infinite alternate; }
+.mood-run .p-leg-fl, .mood-run .p-leg-br { animation: stepB .17s ease-in-out infinite alternate; }
+.mood-run .poodle { animation: runBob .17s ease-in-out infinite alternate; }
+.mood-run .p-ear { animation: earFlop .17s ease-in-out infinite alternate; }
+.mood-run .p-tail { animation: wag .15s ease-in-out infinite alternate; }
+.mood-run .p-tongue { opacity: 1; }
+@keyframes runBob { from { transform: translateY(0) rotate(-3deg); } to { transform: translateY(-5px) rotate(-3deg); } }
+
+/* lie (awake) */
+.mood-lie .p-leg { transform: scaleY(.25); transition: transform .4s; }
+.mood-lie .p-body, .mood-lie .p-tail { transform: translateY(15px); transition: transform .4s; }
+.mood-lie .p-head { transform: translateY(13px); transition: transform .4s; }
+.mood-lie .p-tail { animation: lieWag .5s ease-in-out infinite alternate; }
+@keyframes lieWag { from { transform: translateY(15px) rotate(-12deg); } to { transform: translateY(15px) rotate(14deg); } }
+
+/* chase her tail */
+.mood-chase .poodle { animation: chase .9s ease-in-out infinite; transform-box: view-box; transform-origin: 50% 50%; }
+.mood-chase .p-tail { animation: wag .12s linear infinite alternate; }
+.mood-chase .p-tongue { opacity: 1; }
+@keyframes chase {
+  0% { transform: scaleX(1) translateY(0); } 25% { transform: scaleX(.25) translateY(-7px); }
+  50% { transform: scaleX(-1) translateY(0); } 75% { transform: scaleX(-.25) translateY(-7px); } 100% { transform: scaleX(1) translateY(0); }
+}
+
+/* roll over */
+.mood-roll .p-leg { transform: scaleY(.5); }
+.mood-roll .poodle { animation: roll 1.3s ease-in-out 2; transform-box: view-box; transform-origin: 52% 62%; }
+.mood-roll .p-tongue { opacity: 1; }
+@keyframes roll { 0% { transform: translateY(8px) rotate(0); } 50% { transform: translateY(2px) rotate(180deg); } 100% { transform: translateY(8px) rotate(360deg); } }
+
+/* stretch + yawn */
+.mood-stretch .poodle { animation: stretch 3s ease-in-out infinite; transform-box: view-box; transform-origin: 30% 95%; }
+.mood-stretch .p-leg-fr, .mood-stretch .p-leg-fl { animation: stretchLegs 3s ease-in-out infinite; }
+.mood-stretch .p-tongue { animation: yawn 3s ease-in-out infinite; }
+.mood-stretch .p-eye-open { animation: yawnEyes 3s ease-in-out infinite; }
+.mood-stretch .p-eye-closed { animation: yawnEyesC 3s ease-in-out infinite; }
+@keyframes stretch { 0%, 100% { transform: rotate(0); } 35%, 70% { transform: rotate(11deg); } }
+@keyframes stretchLegs { 0%, 100% { transform: rotate(0); } 35%, 70% { transform: rotate(-38deg); } }
+@keyframes yawn { 0%, 30%, 75%, 100% { opacity: 0; } 40%, 65% { opacity: 1; } }
+@keyframes yawnEyes { 0%, 30%, 75%, 100% { opacity: 1; } 40%, 65% { opacity: 0; } }
+@keyframes yawnEyesC { 0%, 30%, 75%, 100% { opacity: 0; } 40%, 65% { opacity: 1; } }
+
+/* scratch behind the ear */
+.mood-scratch .p-leg-br { animation: scratch .1s linear infinite alternate; }
+.mood-scratch .p-head { transform: rotate(-12deg); }
+.mood-scratch .p-body { transform: translateY(3px); }
+.mood-scratch .p-eye-open { opacity: 0; }
+.mood-scratch .p-eye-closed { opacity: 1; }
+@keyframes scratch { from { transform: rotate(-55deg); } to { transform: rotate(-80deg); } }
+
+/* beg on the back legs */
+.mood-beg .poodle { animation: beg 1.6s ease-in-out infinite; transform-box: view-box; transform-origin: 38% 92%; }
+.mood-beg .p-leg-fr, .mood-beg .p-leg-fl { transform: rotate(-80deg); }
+.mood-beg .p-tail { animation: wag .2s ease-in-out infinite alternate; }
+.mood-beg .p-tongue { opacity: 1; }
+@keyframes beg { 0%, 100% { transform: rotate(-26deg); } 50% { transform: rotate(-31deg) translateY(-3px); } }
+
+/* dig */
+.mood-dig .p-leg-fr { animation: stepA .11s linear infinite alternate; }
+.mood-dig .p-leg-fl { animation: stepB .11s linear infinite alternate; }
+.mood-dig .p-head { transform: rotate(18deg) translateY(4px); }
+.mood-dig .p-tail { animation: wag .25s ease-in-out infinite alternate; }
+.pet-dirt { position: absolute; left: 30%; bottom: 4px; pointer-events: none; }
+.pet-dirt i { position: absolute; width: 5px; height: 5px; border-radius: 50%; background: #a16207; opacity: 0; animation: dirt .6s ease-out infinite; }
+.pet-dirt i:nth-child(2) { animation-delay: .2s; width: 4px; height: 4px; }
+.pet-dirt i:nth-child(3) { animation-delay: .4s; }
+@keyframes dirt { 0% { transform: translate(0, 0); opacity: 1; } 100% { transform: translate(-26px, -18px); opacity: 0; } }
+
+/* drink from the button */
+.mood-drink .p-head { transform: rotate(30deg) translateY(8px); transition: transform .3s; }
+.mood-drink .p-tongue { opacity: 1; animation: lap .32s ease-in-out infinite alternate; transform-origin: 50% 0; }
+.mood-drink .p-tail { animation: wag .4s ease-in-out infinite alternate; }
+@keyframes lap { from { transform: scaleY(.4); } to { transform: scaleY(1.3); } }
+.pet-drops { position: absolute; right: 0; bottom: 30px; pointer-events: none; }
+.pet-drops i { position: absolute; width: 5px; height: 6px; border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%; background: #38bdf8; opacity: 0; animation: drop .7s ease-out infinite; }
+.pet-drops i:nth-child(2) { animation-delay: .25s; right: 6px; }
+.pet-drops i:nth-child(3) { animation-delay: .5s; right: -4px; }
+@keyframes drop { 0% { transform: translate(0, 0); opacity: 1; } 100% { transform: translate(4px, -14px); opacity: 0; } }
+
+/* ── App-styled confirm dialog ── */
+.confirm-overlay {
+  position: fixed; inset: 0; z-index: 95; display: grid; place-items: center; padding: 24px;
+  background: rgba(15, 23, 42, .35); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); animation: fade .2s;
+}
+.confirm-box {
+  width: 100%; max-width: 340px; background: var(--surface); border-radius: 22px; padding: 22px 18px 18px;
+  display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center;
+  box-shadow: 0 20px 50px rgba(15, 23, 42, .25); animation: confirmIn .32s cubic-bezier(.3, 1.4, .5, 1);
+}
+.confirm-box p { margin: 0 0 10px; color: var(--muted); font-size: 15px; line-height: 1.4; }
+.confirm-icon { width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center; background: var(--orange-soft); color: var(--orange-strong); animation: dotPop .45s cubic-bezier(.3, 1.6, .5, 1) .05s both; }
+.confirm-icon.danger { background: #fee2e2; color: var(--danger); }
+.confirm-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; }
+.btn.danger-fill { background: var(--danger); }
+@keyframes confirmIn { from { transform: scale(.85); opacity: 0; } }
+
+.pet-say-track { position: absolute; left: 0; right: 0; bottom: 10px; height: 90px; z-index: 4; pointer-events: none; }
+.pet-say-anchor { position: absolute; bottom: 0; width: 104px; height: 87px; transform: translateX(-50%); transition-property: left; transition-timing-function: linear; }
