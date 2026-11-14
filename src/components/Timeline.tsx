@@ -7,7 +7,7 @@ import { TypeIcon } from './Icons'
 export function Timeline({ entries, onSelect, empty }: {
   entries: Entry[]; onSelect: (e: Entry) => void; empty?: string
 }) {
-  const { t, symptomLabel, locale } = useI18n()
+  const { t, symptomLabel, liquidLabel, locale } = useI18n()
   if (!entries.length) return <p className="empty">{empty ?? t('nothingToday')}</p>
   return (
     <ol className="timeline">
@@ -19,7 +19,7 @@ export function Timeline({ entries, onSelect, empty }: {
             <span className="tl-dot"><TypeIcon type={e.type} size={18} color="#fff" /></span>
             <span className="tl-text">
               <strong>{t(`type_${e.type}` as TKey)}</strong>
-              <span>{describe(e, t, symptomLabel)}</span>
+              <span>{describe(e, t, { symptomLabel, liquidLabel })}</span>
             </span>
           </button>
         </li>

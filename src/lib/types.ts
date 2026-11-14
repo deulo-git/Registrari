@@ -4,16 +4,23 @@ export type EntryType = (typeof ENTRY_TYPES)[number]
 
 /** One colour per entry type, used everywhere (bubbles, timeline, calendar, PDF). */
 export const TYPE_COLOR: Record<EntryType, string> = {
-  water: '#2563eb',
-  meal: '#16a34a',
+  water: '#0284c7',
+  meal: '#65a30d',
   symptom: '#dc2626',
   bowel: '#92400e',
   gas: '#7c3aed',
-  medication: '#ea580c',
+  medication: '#db2777',
   document: '#475569',
 }
 
-export interface WaterData { ml: number }
+/**
+ * The "water" entry type is shown as "Liquids": kind says which drink it was.
+ * Built-in kinds are translated (liquid_<kind>); anything else is free text.
+ * Old entries without kind are water.
+ */
+export const LIQUID_KINDS = ['water', 'infusion', 'coffee', 'milk', 'juice', 'broth', 'isotonic', 'soda'] as const
+export interface WaterData { ml: number; kind?: string }
+export const isPlainWater = (d: WaterData) => !d.kind || d.kind === 'water'
 
 export interface FoodItem {
   name: string

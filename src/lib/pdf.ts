@@ -2,7 +2,7 @@ import { jsPDF } from 'jspdf'
 import { autoTable } from 'jspdf-autotable'
 import { describe, dayKey, fmtDate, fmtMl, fmtTime, parseDayKey } from './format'
 import {
-  GAS_LABELS, TYPE_COLOR, mealTotals,
+  GAS_LABELS, TYPE_COLOR, isPlainWater, mealTotals,
   type BowelData, type Config, type Entry, type EntryType, type GasData, type MealData, type SymptomData, type WaterData,
 } from './types'
 import type { TKey } from './i18n'
@@ -17,6 +17,7 @@ interface Opts {
   config: Config
   t: (k: TKey) => string
   symptomLabel: (c: string) => string
+  liquidLabel: (k?: string) => string
   locale: string
 }
 
@@ -33,7 +34,7 @@ function tint(c: string, k = 0.88): [number, number, number] {
   return [Math.round(r + (255 - r) * k), Math.round(g + (255 - g) * k), Math.round(b + (255 - b) * k)]
 }
 
-const TEAL = '#0f766e'
+const TEAL = '#15803d'
 
 export function buildReport(o: Opts): { blob: Blob; filename: string } {
   const { t, locale } = o
@@ -97,8 +98,11 @@ export function buildReport(o: Opts): { blob: Blob; filename: string } {
     { key: 'date', label: t('date'), cell: () => '' },
   ]
   if (has('water')) cols.push({ key: 'water', label: t('water'), cell: (es) => {
-    const ml = es.filter((e) => e.type === 'water').reduce((s, e) => s + ((e.data as WaterData).ml || 0), 0)
-    return ml ? fmtMl(ml) : '-'
+    const ws = es.filter((e) => e.type === 'water')
+    const ml = ws.reduce((s, e) => s + ((e.data as WaterData).ml || 0), 0)
+    const water = ws.filter((e) => isPlainWater(e.data as WaterData)).reduce((s, e) => s + ((e.data as WaterData).ml || 0), 0)
+    if (!ml) return '-'
+    return water === ml ? `${fmtMl(ml)} (${t('waterOnly')})` : `${fmtMl(ml)} (${t('waterOnly')} ${fmtMl(water)})`
   } })
   if (has('meal')) cols.push({ key: 'meal', label: t('meals'), cell: (es) => {
     const ms = es.filter((e) => e.type === 'meal')
@@ -168,7 +172,7 @@ export function buildReport(o: Opts): { blob: Blob; filename: string } {
         k === lastDay ? '' : fmtDate(d, locale, { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' }),
         fmtTime(d, locale),
         t(`type_${e.type}` as TKey),
-        describe(e, t, o.symptomLabel, o.includeNotes),
+        describe(e, t, o, o.includeNotes),
       ].map(clean),
     })
     lastDay = k

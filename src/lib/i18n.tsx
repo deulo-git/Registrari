@@ -29,7 +29,7 @@ const ca = {
   errorGeneric: "No s'ha pogut desar. Revisa la connexió.",
   loading: 'Carregant…',
 
-  type_water: 'Aigua',
+  type_water: 'Líquids',
   type_meal: 'Àpat',
   type_symptom: 'Símptoma',
   type_bowel: 'Evacuació',
@@ -45,6 +45,24 @@ const ca = {
   amount: 'Quantitat',
   unitGlasses: 'Gots',
   waterToday: "Aigua d'avui",
+  liquidKind: 'Què has begut?',
+  liquid_water: 'Aigua',
+  liquid_infusion: 'Infusió',
+  liquid_coffee: 'Cafè',
+  liquid_milk: 'Llet',
+  liquid_juice: 'Suc',
+  liquid_broth: 'Brou',
+  liquid_isotonic: 'Isotònica',
+  liquid_soda: 'Refresc',
+  otherLiquid: 'Una altra beguda',
+  suggestions: 'Suggeriments',
+  aiCalc: 'Calcular nutrients amb IA',
+  aiCalculating: 'Calculant…',
+  aiDone: 'Nutrients calculats',
+  aiError: "La IA no ha pogut calcular-ho. Torna-ho a provar o escriu-ho a mà.",
+  aiNoKey: "La IA encara no està configurada.",
+  aiHint: "Si no hi poses els valors, la IA els calcularà en desar.",
+  swipeHint: 'Llisca per canviar de dia',
 
   // Meal
   mealKind: 'Àpat',
@@ -142,7 +160,8 @@ const ca = {
   time: 'Hora',
   type: 'Tipus',
   detail: 'Detall',
-  water: 'Aigua',
+  water: 'Líquids',
+  waterOnly: 'aigua',
   meals: 'Àpats',
   symptoms: 'Símptomes',
   bowels: 'Evacuacions',
@@ -213,7 +232,7 @@ const es: Dict = {
   errorGeneric: 'No se ha podido guardar. Revisa la conexión.',
   loading: 'Cargando…',
 
-  type_water: 'Agua',
+  type_water: 'Líquidos',
   type_meal: 'Comida',
   type_symptom: 'Síntoma',
   type_bowel: 'Deposición',
@@ -228,6 +247,24 @@ const es: Dict = {
   amount: 'Cantidad',
   unitGlasses: 'Vasos',
   waterToday: 'Agua de hoy',
+  liquidKind: '¿Qué has bebido?',
+  liquid_water: 'Agua',
+  liquid_infusion: 'Infusión',
+  liquid_coffee: 'Café',
+  liquid_milk: 'Leche',
+  liquid_juice: 'Zumo',
+  liquid_broth: 'Caldo',
+  liquid_isotonic: 'Isotónica',
+  liquid_soda: 'Refresco',
+  otherLiquid: 'Otra bebida',
+  suggestions: 'Sugerencias',
+  aiCalc: 'Calcular nutrientes con IA',
+  aiCalculating: 'Calculando…',
+  aiDone: 'Nutrientes calculados',
+  aiError: 'La IA no ha podido calcularlo. Vuelve a probar o escríbelo a mano.',
+  aiNoKey: 'La IA todavía no está configurada.',
+  aiHint: 'Si no pones los valores, la IA los calculará al guardar.',
+  swipeHint: 'Desliza para cambiar de día',
 
   mealKind: 'Comida',
   meal_breakfast: 'Desayuno',
@@ -318,7 +355,8 @@ const es: Dict = {
   time: 'Hora',
   type: 'Tipo',
   detail: 'Detalle',
-  water: 'Agua',
+  water: 'Líquidos',
+  waterOnly: 'agua',
   meals: 'Comidas',
   symptoms: 'Síntomas',
   bowels: 'Depos.',
@@ -376,6 +414,8 @@ interface I18n {
   t: (k: TKey) => string
   /** Symptom category label: built-in key → translated, custom → as typed. */
   symptomLabel: (c: string) => string
+  /** Liquid kind label: built-in key → translated, custom → as typed. */
+  liquidLabel: (k?: string) => string
   locale: string
 }
 
@@ -391,8 +431,9 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   const d = DICTS[lang]
   const t = (k: TKey) => d[k]
   const symptomLabel = (c: string) => (d as Record<string, string>)['sym_' + c] ?? c
+  const liquidLabel = (k?: string) => (d as Record<string, string>)['liquid_' + (k || 'water')] ?? k ?? ''
   return (
-    <Ctx.Provider value={{ lang, setLang, t, symptomLabel, locale: lang === 'ca' ? 'ca-ES' : 'es-ES' }}>
+    <Ctx.Provider value={{ lang, setLang, t, symptomLabel, liquidLabel, locale: lang === 'ca' ? 'ca-ES' : 'es-ES' }}>
       {children}
     </Ctx.Provider>
   )

@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
-import { DEFAULT_CONFIG, type Config, type Entry, type EntryType, type StoredFile } from './types'
+import { DEFAULT_CONFIG, type Config, type Entry, type EntryType, type FoodItem, type StoredFile } from './types'
 
 export const supabase = createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_KEY, {
   auth: { persistSession: false },
@@ -109,4 +109,14 @@ export async function fileUrl(path: string): Promise<string> {
   const { data, error } = await supabase.storage.from('documents').createSignedUrl(path, 60 * 60)
   if (error || !data) throw new ApiError('network')
   return data.signedUrl
+}
+
+// ── AI nutrition (edge function "nutrition", Gemini behind it) ──
+export async function estimateNutrition(pin: string, lang: string, items: FoodItem[]): Promise<FoodItem[]> {
+  const { data, error } = await supabase.functions.invoke('nutrition', {
+    body: { pin, lang, items: items.map((i) => ({ name: i.name, qty: i.qty, unit: i.unit })) },
+  })
+  if (error) throw new ApiError('ai_error')
+  if (!data?.ok) throw new ApiError(data?.error ?? 'ai_error')
+  return data.items as FoodItem[]
 }

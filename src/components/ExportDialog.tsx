@@ -13,7 +13,7 @@ import { toast } from './Toast'
 export function ExportDialog({ initialFrom, initialTo, initialTypes, onClose }: {
   initialFrom: Date; initialTo: Date; initialTypes: EntryType[]; onClose: () => void
 }) {
-  const { t, symptomLabel, locale } = useI18n()
+  const { t, symptomLabel, liquidLabel, locale } = useI18n()
   const { config } = useConfig()
   const [from, setFrom] = useState(dayKey(initialFrom))
   const [to, setTo] = useState(dayKey(initialTo))
@@ -34,7 +34,7 @@ export function ExportDialog({ initialFrom, initialTo, initialTypes, onClose }: 
       const entries = await fetchEntries(f, addDays(l, 1), types)
       // jsPDF is heavy: load it only when a report is asked for.
       const { buildReport, deliverPdf } = await import('../lib/pdf')
-      setReady({ deliver: deliverPdf, ...buildReport({ entries, from: f, to: l, types, includeNotes: notes, config, t, symptomLabel, locale }) })
+      setReady({ deliver: deliverPdf, ...buildReport({ entries, from: f, to: l, types, includeNotes: notes, config, t, symptomLabel, liquidLabel, locale }) })
     } catch {
       toast(t('errorGeneric'), 'error')
     } finally { setBusy(false) }
@@ -43,7 +43,7 @@ export function ExportDialog({ initialFrom, initialTo, initialTypes, onClose }: 
   return (
     <div className="sheet-overlay" onClick={onClose}>
       <div className="sheet" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}
-        style={{ '--c': '#0f766e' } as React.CSSProperties}>
+        style={{ '--c': '#22a35a' } as React.CSSProperties}>
         <header className="sheet-head">
           <span className="sheet-icon"><DownloadIcon size={20} color="#fff" /></span>
           <h2>{t('exportPdf')}</h2>

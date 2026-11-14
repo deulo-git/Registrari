@@ -36,18 +36,19 @@ export function fmtMl(ml: number) {
 const r1 = (n: number) => Math.round(n * 10) / 10
 
 type T = (k: TKey) => string
+export interface Labels { symptomLabel: (c: string) => string; liquidLabel: (k?: string) => string }
 
 /**
  * One-line human description of an entry, shared by the timeline and the PDF
  * so both always say the same thing.
  */
-export function describe(e: Entry, t: T, symptomLabel: (c: string) => string, withNotes = true): string {
+export function describe(e: Entry, t: T, { symptomLabel, liquidLabel }: Labels, withNotes = true): string {
   const parts: string[] = []
   let notes: string | undefined
   switch (e.type) {
     case 'water': {
       const d = e.data as WaterData
-      parts.push(fmtMl(d.ml))
+      parts.push(`${liquidLabel(d.kind)} · ${fmtMl(d.ml)}`)
       break
     }
     case 'meal': {

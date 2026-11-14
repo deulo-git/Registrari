@@ -1,15 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
-  DOC_KINDS, GAS_LABELS, MEAL_KINDS, TYPE_COLOR, mealTotals,
+  DOC_KINDS, GAS_LABELS, LIQUID_KINDS, MEAL_KINDS, TYPE_COLOR, mealTotals,
   type BowelData, type DataByType, type DocumentData, type Entry, type EntryType, type FoodItem,
   type GasData, type MealData, type MealKind, type MedicationData, type StoredFile, type SymptomData, type WaterData,
 } from '../lib/types'
 import { useI18n, type TKey } from '../lib/i18n'
 import { useConfig } from '../lib/data'
 import { usePin } from '../lib/pin'
-import { deleteEntry, fileUrl, saveEntry, uploadFile } from '../lib/api'
+import { ApiError, deleteEntry, estimateNutrition, fileUrl, saveEntry, uploadFile } from '../lib/api'
 import { fmtMl, fromLocalInput, toLocalInput } from '../lib/format'
-import { CameraIcon, CloseIcon, FileIcon, PlusIcon, TrashIcon, TypeIcon } from './Icons'
+import { matching, useSuggestions } from '../lib/suggestions'
+import { CameraIcon, CloseIcon, FileIcon, PlusIcon, SparkleIcon, TrashIcon, TypeIcon } from './Icons'
 import { BristolIcon } from './Bristol'
 import { toast } from './Toast'
 
@@ -32,7 +33,7 @@ function defaultMeal(d: Date): MealKind {
 
 function defaults(type: EntryType, when: Date, glassMl: number): DataByType[EntryType] {
   switch (type) {
-    case 'water': return { ml: glassMl } satisfies WaterData
+    case 'water': return { ml: glassMl, kind: 'water' } satisfies WaterData
     case 'meal': return { meal: defaultMeal(when), items: [{ name: '', qty: undefined, unit: 'g' }] } satisfies MealData
     case 'symptom': return { category: '', intensity: 5 } satisfies SymptomData
     case 'bowel': return { bristol: 4, blood: 'none', effort: 0 } satisfies BowelData
@@ -42,8 +43,33 @@ function defaults(type: EntryType, when: Date, glassMl: number): DataByType[Entr
   }
 }
 
+const hasNutrients = (i: FoodItem) =>
+  [i.kcal, i.protein, i.carbs, i.fat, i.fiber].some((v) => v !== undefined && v !== null)
+
+/**
+ * Asks the AI for the foods that have no nutrient values yet and merges the
+ * answer in. Foods already filled (by hand or by an earlier estimate) are kept
+ * as they are. Never blocks saving: on failure the meal is saved without them.
+ */
+async function fillNutrients(pin: string, lang: string, items: FoodItem[]): Promise<FoodItem[]> {
+  const missing = items.map((it, i) => ({ it, i })).filter(({ it }) => !hasNutrients(it))
+  if (!missing.length) return items
+  try {
+    const est = await estimateNutrition(pin, lang, missing.map((m) => m.it))
+    const out = [...items]
+    missing.forEach(({ it, i }, n) => {
+      const e = est[n]
+      if (e) out[i] = { ...it, qty: it.qty ?? e.qty, unit: it.qty ? it.unit : e.unit, kcal: e.kcal, protein: e.protein, carbs: e.carbs, fat: e.fat, fiber: e.fiber }
+    })
+    return out
+  } catch (e) {
+    if (e instanceof ApiError && (e.code === 'bad_pin' || e.code === 'locked')) throw e
+    return items
+  }
+}
+
 export function EntrySheet({ type, entry, defaultDate, onClose }: Props) {
-  const { t } = useI18n()
+  const { t, lang } = useI18n()
   const { config } = useConfig()
   const { withPin } = usePin()
   const initialWhen = useMemo(() => {
@@ -89,7 +115,8 @@ export function EntrySheet({ type, entry, defaultDate, onClose }: Props) {
         let payload = data
         if (type === 'meal') {
           const m = data as MealData
-          payload = { ...m, items: m.items.filter((i) => i.name.trim()) }
+          const items = m.items.filter((i) => i.name.trim())
+          payload = { ...m, items: await fillNutrients(pin, lang, items) }
         }
         if (type === 'document' && pendingFiles.length) {
           const uploaded: StoredFile[] = []
@@ -200,8 +227,28 @@ function NumberInput({ value, onChange, placeholder, step = 'any', suffix }: {
 // ── Water ──
 
 function WaterForm({ data, set, glassMl }: { data: WaterData; set: SetData; glassMl: number }) {
-  const { t } = useI18n()
+  const { t, liquidLabel } = useI18n()
+  const sugg = useSuggestions()
   const [unit, setUnit] = useState<'glass' | 'ml' | 'l'>('ml')
+  const kind = data.kind || 'water'
+  const builtIn = (LIQUID_KINDS as readonly string[]).includes(kind)
+  const [custom, setCustom] = useState(builtIn ? '' : kind)
+  const kinds = [...LIQUID_KINDS, ...sugg.liquids]
+  const kindPicker = (
+    <div className="field">
+      <span>{t('liquidKind')}</span>
+      <div className="chips">
+        {kinds.map((k) => (
+          <button key={k} type="button" className={'chip' + (kind === k ? ' on' : '')}
+            onClick={() => { set({ ...data, kind: k }); setCustom('') }}>
+            {liquidLabel(k)}
+          </button>
+        ))}
+      </div>
+      <input value={custom} placeholder={t('otherLiquid')}
+        onChange={(e) => { setCustom(e.target.value); set({ ...data, kind: e.target.value.trim() || 'water' }) }} />
+    </div>
+  )
   const quick = [
     { ml: glassMl, label: `1 ${t('glass')}`, sub: fmtMl(glassMl) },
     { ml: glassMl * 2, label: `2 ${t('glasses')}`, sub: fmtMl(glassMl * 2) },
@@ -212,10 +259,11 @@ function WaterForm({ data, set, glassMl }: { data: WaterData; set: SetData; glas
   const toMl = (v: number) => Math.round(unit === 'glass' ? v * glassMl : unit === 'l' ? v * 1000 : v)
   return (
     <>
+      {kindPicker}
       <div className="quick-grid">
         {quick.map((q) => (
           <button key={q.label} type="button" className={'quick' + (data.ml === q.ml ? ' on' : '')}
-            onClick={() => set({ ml: q.ml })}>
+            onClick={() => set({ ...data, ml: q.ml })}>
             <strong>{q.label}</strong>{q.sub && <small>{q.sub}</small>}
           </button>
         ))}
@@ -224,7 +272,7 @@ function WaterForm({ data, set, glassMl }: { data: WaterData; set: SetData; glas
         <span>{t('amount')}</span>
         <div className="row">
           <NumberInput value={Number.isFinite(shown) ? Math.round(shown * 100) / 100 : undefined}
-            onChange={(v) => set({ ml: v ? toMl(v) : 0 })} />
+            onChange={(v) => set({ ...data, ml: v ? toMl(v) : 0 })} />
           <div className="segmented">
             {(['glass', 'ml', 'l'] as const).map((u) => (
               <button key={u} type="button" className={unit === u ? 'on' : ''} onClick={() => setUnit(u)}>
@@ -242,14 +290,42 @@ function WaterForm({ data, set, glassMl }: { data: WaterData; set: SetData; glas
 // ── Meal ──
 
 function MealForm({ data, set }: { data: MealData; set: SetData }) {
-  const { t } = useI18n()
+  const { t, lang } = useI18n()
+  const { withPin } = usePin()
+  const sugg = useSuggestions()
   const [open, setOpen] = useState<number | null>(null)
+  const [focused, setFocused] = useState<number | null>(null)
+  const [aiBusy, setAiBusy] = useState(false)
   const items = data.items
   const update = (i: number, patch: Partial<FoodItem>) =>
     set({ ...data, items: items.map((it, j) => (j === i ? { ...it, ...patch } : it)) })
   const tot = mealTotals(items)
   const hasTotals = tot.kcal || tot.protein || tot.carbs || tot.fat || tot.fiber
   const lastRef = useRef<HTMLInputElement>(null)
+  const named = items.filter((i) => i.name.trim())
+
+  /** Recalculates every named food (overwrites hand-typed values on purpose). */
+  const runAi = async () => {
+    if (!named.length || aiBusy) return
+    setAiBusy(true)
+    try {
+      const est = await withPin((pin) => estimateNutrition(pin, lang, named))
+      if (!est) return
+      let n = 0
+      set({
+        ...data,
+        items: items.map((it) => {
+          if (!it.name.trim()) return it
+          const e = est[n++]
+          return e ? { ...it, qty: it.qty ?? e.qty, unit: it.qty ? it.unit : e.unit, kcal: e.kcal, protein: e.protein, carbs: e.carbs, fat: e.fat, fiber: e.fiber } : it
+        }),
+      })
+      toast(t('aiDone'))
+    } catch (e) {
+      const code = e instanceof ApiError ? e.code : ''
+      if (code !== 'bad_pin' && code !== 'locked') toast(code === 'no_key' ? t('aiNoKey') : t('aiError'), 'error')
+    } finally { setAiBusy(false) }
+  }
 
   return (
     <>
@@ -259,40 +335,69 @@ function MealForm({ data, set }: { data: MealData; set: SetData }) {
       <div className="field">
         <span>{t('foods')}</span>
         <div className="food-list">
-          {items.map((it, i) => (
-            <div key={i} className="food">
-              <div className="food-row">
-                <input ref={i === items.length - 1 ? lastRef : undefined} className="food-name"
-                  placeholder={t('foodName')} value={it.name} onChange={(e) => update(i, { name: e.target.value })} />
-                <NumberInput value={it.qty} placeholder={t('qty')} onChange={(v) => update(i, { qty: v })} />
-                <select value={it.unit ?? 'g'} onChange={(e) => update(i, { unit: e.target.value as FoodItem['unit'] })}>
-                  <option value="g">g</option><option value="ml">ml</option><option value="u">u</option>
-                </select>
-                {items.length > 1 && (
-                  <button type="button" className="icon-btn small" aria-label={t('delete')}
-                    onClick={() => set({ ...data, items: items.filter((_, j) => j !== i) })}><CloseIcon size={16} /></button>
+          {items.map((it, i) => {
+            const options = focused === i ? matching(sugg.foods, it.name, (f) => f.name, 6) : []
+            return (
+              <div key={i} className="food">
+                <div className="food-row">
+                  <input ref={i === items.length - 1 ? lastRef : undefined} className="food-name"
+                    placeholder={t('foodName')} value={it.name}
+                    onFocus={() => setFocused(i)}
+                    onBlur={() => setTimeout(() => setFocused((f) => (f === i ? null : f)), 150)}
+                    onChange={(e) => update(i, { name: e.target.value })} />
+                  <NumberInput value={it.qty} placeholder={t('qty')} onChange={(v) => update(i, { qty: v })} />
+                  <select value={it.unit ?? 'g'} onChange={(e) => update(i, { unit: e.target.value as FoodItem['unit'] })}>
+                    <option value="g">g</option><option value="ml">ml</option><option value="u">u</option>
+                  </select>
+                  {items.length > 1 && (
+                    <button type="button" className="icon-btn small" aria-label={t('delete')}
+                      onClick={() => set({ ...data, items: items.filter((_, j) => j !== i) })}><CloseIcon size={16} /></button>
+                  )}
+                </div>
+                {options.length > 0 && (
+                  <div className="suggest">
+                    <small>{t('suggestions')}</small>
+                    <div className="chips">
+                      {options.map((f) => (
+                        <button key={f.name} type="button" className="chip sugg"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => { update(i, { ...f }); setFocused(null) }}>
+                          {f.name}{f.qty ? ` · ${f.qty} ${f.unit ?? 'g'}` : ''}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {hasNutrients(it) && open !== i && (
+                  <small className="food-macros">
+                    {Math.round(it.kcal ?? 0)} kcal · {t('protein')} {+(it.protein ?? 0).toFixed(1)} g · {t('carbs')} {+(it.carbs ?? 0).toFixed(1)} g · {t('fat')} {+(it.fat ?? 0).toFixed(1)} g
+                  </small>
+                )}
+                <button type="button" className="link-btn" onClick={() => setOpen(open === i ? null : i)}>
+                  {open === i ? '▾' : '▸'} {t('nutritionHint')}
+                </button>
+                {open === i && (
+                  <div className="macro-grid">
+                    {(['kcal', 'protein', 'carbs', 'fat', 'fiber'] as const).map((k) => (
+                      <label key={k}>
+                        <small>{t(k)}</small>
+                        <NumberInput value={it[k]} onChange={(v) => update(i, { [k]: v })} />
+                      </label>
+                    ))}
+                  </div>
                 )}
               </div>
-              <button type="button" className="link-btn" onClick={() => setOpen(open === i ? null : i)}>
-                {open === i ? '▾' : '▸'} {t('nutritionHint')}
-              </button>
-              {open === i && (
-                <div className="macro-grid">
-                  {(['kcal', 'protein', 'carbs', 'fat', 'fiber'] as const).map((k) => (
-                    <label key={k}>
-                      <small>{t(k)}</small>
-                      <NumberInput value={it[k]} onChange={(v) => update(i, { [k]: v })} />
-                    </label>
-                  ))}
-                </div>
-              )}
-            </div>
-          ))}
+            )
+          })}
         </div>
         <button type="button" className="btn ghost add-row" onClick={() => {
           set({ ...data, items: [...items, { name: '', unit: 'g' }] })
           setTimeout(() => lastRef.current?.focus(), 30)
         }}><PlusIcon size={18} /> {t('addFood')}</button>
+        <button type="button" className="btn ai" onClick={runAi} disabled={!named.length || aiBusy}>
+          <SparkleIcon size={18} /> {aiBusy ? t('aiCalculating') : t('aiCalc')}
+        </button>
+        {named.some((i) => !hasNutrients(i)) && <small className="muted">{t('aiHint')}</small>}
       </div>
 
       {hasTotals ? (
@@ -405,16 +510,32 @@ function GasForm({ data, set }: { data: GasData; set: SetData }) {
 function MedicationForm({ data, set }: { data: MedicationData; set: SetData }) {
   const { t } = useI18n()
   const { config } = useConfig()
+  const sugg = useSuggestions()
+  // Usual medications from settings first, then the ones used before.
+  const seen = new Set<string>()
+  const all = [...config.medications, ...sugg.meds].filter((m) => {
+    const k = `${m.name}|${m.dose}|${m.unit}`.toLocaleLowerCase()
+    if (seen.has(k)) return false
+    seen.add(k)
+    return true
+  })
+  const q = data.name.trim().toLocaleLowerCase()
+  const shown = all.filter((m) => !q || m.name.toLocaleLowerCase().includes(q)).slice(0, 10)
   return (
     <>
-      {config.medications.length > 0 && (
+      <label className="field">
+        <span>{t('medication')}</span>
+        <input value={data.name} placeholder={t('medication')}
+          onChange={(e) => set({ ...data, name: e.target.value })} />
+      </label>
+      {shown.length > 0 && (
         <div className="field">
-          <span>{t('usualMeds')}</span>
+          <span>{t('suggestions')}</span>
           <div className="chips">
-            {config.medications.map((m, i) => {
+            {shown.map((m, i) => {
               const on = data.name === m.name && data.dose === m.dose && data.unit === m.unit
               return (
-                <button key={i} type="button" className={'chip' + (on ? ' on' : '')}
+                <button key={i} type="button" className={'chip sugg' + (on ? ' on' : '')}
                   onClick={() => set({ ...data, name: m.name, dose: m.dose, unit: m.unit })}>
                   {m.name}{m.dose ? ` · ${m.dose} ${m.unit}` : ''}
                 </button>
@@ -423,11 +544,6 @@ function MedicationForm({ data, set }: { data: MedicationData; set: SetData }) {
           </div>
         </div>
       )}
-      <label className="field">
-        <span>{t('medication')}</span>
-        <input value={data.name} placeholder={config.medications.length ? t('otherMed') : t('medication')}
-          onChange={(e) => set({ ...data, name: e.target.value })} />
-      </label>
       <div className="row">
         <label className="field grow"><span>{t('dose')}</span>
           <input inputMode="decimal" value={data.dose ?? ''} onChange={(e) => set({ ...data, dose: e.target.value })} /></label>
