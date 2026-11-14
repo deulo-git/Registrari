@@ -922,3 +922,27 @@ html, body { overflow-x: hidden; }
 .pet-bowl.hidden { opacity: 0; }
 .bowl-water { transition: y 1.8s cubic-bezier(.22, 1, .36, 1); }
 .today-screen .pet-track { z-index: 2; }
+
+/* ════════════════ v0.10: Today without the list, no scrolling at all ════════════════ */
+
+/* Today never scrolls, in either direction (also no iOS rubber-banding). */
+html:has(.app.on-today), body:has(.app.on-today) { overflow: hidden; overscroll-behavior: none; }
+.app.on-today { overflow: hidden; }
+.today-screen { overflow: hidden; touch-action: none; }
+
+/* The bottom area keeps the button at the centre of the viewport; the space
+   above it is just empty. */
+.today-screen .hero { margin-top: auto; }
+
+/* The date is a button that opens the calendar */
+.day-nav .day-title {
+  display: flex; flex-direction: column; align-items: center; padding: 4px 6px; border-radius: 12px;
+  transition: background-color .15s;
+}
+.day-nav .day-title:active { background: var(--accent-soft); }
+
+/* Bubble labels: a little pill behind the text so neighbours read apart */
+.bubble-label {
+  background: rgba(255, 255, 255, .92); padding: 2px 8px; border-radius: 99px;
+  box-shadow: 0 2px 6px rgba(21, 128, 61, .12); font-size: 12.5px;
+}

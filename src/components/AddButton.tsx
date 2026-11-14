@@ -11,16 +11,18 @@ interface Props {
   waterProgress: number
 }
 
-/** The button sits at the bottom of the screen, so the bubbles fan out upwards. */
-const RX = 138
-const RY = 168
-const FROM = -192
-const TO = 12
+/**
+ * The button is at the centre of the screen: the bubbles burst out in a full
+ * circle around it, far enough apart that the labels never touch.
+ */
+const MAX_RADIUS = 142
+/** Room kept between a side label and the screen edge (half a label + margin). */
+const EDGE = 54
 
 /**
- * The big "+" button, at the bottom of the Today screen. It holds today's
+ * The big "+" button, at the centre of the Today screen. It holds today's
  * water as a wavy fill that rises as water is logged. Tapping it fans the
- * categories out above it as coloured bubbles (Glovo-style).
+ * categories out around it as coloured bubbles (Glovo-style).
  */
 export function AddButton({ open, setOpen, onPick, waterProgress }: Props) {
   const { t } = useI18n()
@@ -37,6 +39,8 @@ export function AddButton({ open, setOpen, onPick, waterProgress }: Props) {
     return () => window.clearTimeout(h)
   }, [target])
   const full = p >= 1
+  // Narrow phones get a slightly tighter circle so the side labels stay on screen.
+  const radius = Math.min(MAX_RADIUS, (typeof window === 'undefined' ? 375 : window.innerWidth) / 2 - EDGE)
 
   return (
     <>
@@ -47,9 +51,9 @@ export function AddButton({ open, setOpen, onPick, waterProgress }: Props) {
         {full && <span className="ring-stars"><i>✦</i><i>✦</i><i>✦</i><i>✦</i></span>}
 
         {ENTRY_TYPES.map((type, i) => {
-          const a = (FROM + ((TO - FROM) / (ENTRY_TYPES.length - 1)) * i) * (Math.PI / 180)
-          const x = Math.cos(a) * RX
-          const y = Math.sin(a) * RY
+          const a = (-90 + (360 / ENTRY_TYPES.length) * i) * (Math.PI / 180)
+          const x = Math.cos(a) * radius
+          const y = Math.sin(a) * radius
           return (
             <button
               key={type}

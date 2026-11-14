@@ -48,10 +48,11 @@ function Shell() {
 
       <main>
         <div className="tab-today" hidden={tab !== 'today'}>
-          <Today active={tab === 'today'} day={day} setDay={setDay} onAdd={(ty) => add(ty)} onEdit={edit} />
+          <Today active={tab === 'today'} day={day} setDay={setDay} onAdd={(ty) => add(ty)}
+            onOpenCalendar={() => setTab('calendar')} />
         </div>
         {tab === 'calendar' && (
-          <Calendar onEdit={edit} onOpenDay={(d) => { setDay(startOfDay(d)); setTab('today') }} />
+          <Calendar initialDay={day} onEdit={edit} onOpenDay={(d) => { setDay(startOfDay(d)); setTab('today') }} />
         )}
         {tab === 'documents' && <Documents onAdd={() => add('document', startOfDay(new Date()))} onEdit={edit} />}
         {tab === 'settings' && <Settings />}

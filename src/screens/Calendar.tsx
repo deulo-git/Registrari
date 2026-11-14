@@ -40,10 +40,13 @@ export function TypeFilter({ value, onChange }: { value: EntryType[]; onChange: 
   )
 }
 
-export function Calendar({ onEdit, onOpenDay }: { onEdit: (e: Entry) => void; onOpenDay: (d: Date) => void }) {
+export function Calendar({ initialDay, onEdit, onOpenDay }: {
+  /** Day to open on (the one shown in Today). */
+  initialDay: Date; onEdit: (e: Entry) => void; onOpenDay: (d: Date) => void
+}) {
   const { t, locale } = useI18n()
-  const [month, setMonth] = useState(() => { const d = startOfDay(new Date()); d.setDate(1); return d })
-  const [selected, setSelected] = useState(() => startOfDay(new Date()))
+  const [month, setMonth] = useState(() => { const d = startOfDay(initialDay); d.setDate(1); return d })
+  const [selected, setSelected] = useState(() => startOfDay(initialDay))
   const [filter, setFilterState] = useState<EntryType[]>(readFilter)
   const [exporting, setExporting] = useState(false)
   const setFilter = (v: EntryType[]) => {
