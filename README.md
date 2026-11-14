@@ -2,6 +2,8 @@
 
 PWA mòbil (català / castellà) per portar un registre digestiu diari: aigua, àpats, símptomes, evacuacions (escala de Bristol), ventilacions, medicació i documents mèdics. Exporta la cronologia filtrada en PDF per al digestòleg.
 
+**App:** https://registrari.vercel.app (Vercel, compte deulofes; cada push a `main` es publica sol).
+
 ## Stack
 - React + Vite + TypeScript, `vite-plugin-pwa`
 - Supabase (projecte `Registrari`, ref `xyidxnkpxzteutnuloui`): Postgres + Storage
