@@ -903,3 +903,22 @@ html, body { overflow-x: hidden; }
 .mood-tummy .p-tongue { opacity: 1; }
 .mood-tummy .p-shadow { opacity: 0; }
 @keyframes wiggle { from { transform: rotate(-14deg); } to { transform: rotate(14deg); } }
+
+/* ════════════════ v0.9: + button at the vertical centre of the screen ════════════════ */
+
+/* The bottom area is sized so the button's centre lands on the middle of the
+   viewport (50dvh); Pipa walks below it, above the tab bar, never behind it.
+   Button centre = area top + 26px padding + 98px (half the 196px hub). */
+.today-screen .hero {
+  flex: 0 0 calc(50dvh - var(--tabbar-h) - env(safe-area-inset-bottom) + 114px);
+  padding-top: 26px;
+}
+
+/* Pipa's water bowl, on the floor under the button */
+.pet-bowl {
+  position: absolute; left: 50%; bottom: 4px; transform: translateX(-50%); z-index: 1;
+  pointer-events: none; transition: opacity .25s;
+}
+.pet-bowl.hidden { opacity: 0; }
+.bowl-water { transition: y 1.8s cubic-bezier(.22, 1, .36, 1); }
+.today-screen .pet-track { z-index: 2; }

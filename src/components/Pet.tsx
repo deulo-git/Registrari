@@ -7,8 +7,8 @@ import { PIPA, nextMove, phrase, type Mood, type PhraseList } from '../lib/pipa'
  *
  * What she does and says comes from src/data/pipa.json (weights per move and
  * per phrase). She walks, runs, sniffs, plays, chases her tail, rolls over,
- * stretches, scratches, begs, digs, drinks from the button (whose water is
- * today's water), sleeps — mostly at night — and sometimes leaves the screen.
+ * stretches, scratches, begs, digs, drinks from her bowl under the button
+ * (same water as the button: today's water), sleeps — mostly at night — and sometimes leaves the screen.
  * Tapping the empty space while she is away calls her back ("M'has cridat?").
  * Now and then she poops; tapping the poop picks it up (it fades out).
  *
@@ -25,8 +25,8 @@ const rand = (a: number, b: number) => a + Math.random() * (b - a)
 
 /** Half the dog's width in px: keeps her fully on screen. */
 const HALF = 52
-/** Button radius: where her nose reaches the water when drinking. */
-const BUTTON_R = 78
+/** Half the water bowl's width: where her nose reaches the water when drinking. */
+const BOWL_R = 20
 /** Moods that just last a while in place (a tap can interrupt them). */
 const IN_PLACE: Mood[] = [
   'sit', 'lie', 'sniff', 'play', 'chase', 'roll', 'stretch', 'scratch', 'beg', 'dig', 'drink',
@@ -131,7 +131,7 @@ export function Pet({ hidden, water }: Props) {
       case 'drink': {
         const left = s.current.x < 0.5
         const nose = HALF - 8
-        const target = left ? (w / 2 - BUTTON_R - nose) / w : (w / 2 + BUTTON_R + nose) / w
+        const target = left ? (w / 2 - BOWL_R - nose) / w : (w / 2 + BOWL_R + nose) / w
         moveTo(target, false, () => {
           setFacing(left ? 1 : -1)
           setMood('drink')
@@ -285,6 +285,17 @@ export function Pet({ hidden, water }: Props) {
             <PoopSvg />
           </button>
         ))}
+      </div>
+      {/* Her bowl, under the button: same water as the button (today's water). */}
+      <div className={'pet-bowl' + (hidden ? ' hidden' : '')} aria-hidden="true">
+        <svg viewBox="0 0 44 20" width="44" height="20">
+          <defs><clipPath id="bowlIn"><path d="M5 5h34l-3 10H8z" /></clipPath></defs>
+          <path d="M5 5h34l-3 10H8z" fill="#e0f2fe" />
+          <rect className="bowl-water" clipPath="url(#bowlIn)" x="0" width="44"
+            y={5 + 10 * (1 - Math.max(0, Math.min(1, water)))} height="12" fill="#38bdf8" />
+          <path d="M2 4h40l-4 13H6z" fill="none" stroke="#f97316" strokeWidth="2.4" strokeLinejoin="round" />
+          <ellipse cx="22" cy="19" rx="17" ry="1.4" fill="rgba(21,128,61,.18)" />
+        </svg>
       </div>
       <div ref={track} className={'pet-track' + (hidden ? ' hidden' : '')}>
         <div ref={petRef} className={`pet mood-${mood}`}
