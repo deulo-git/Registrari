@@ -59,11 +59,18 @@ async function load(): Promise<Suggestions> {
   return { foods: sorted(foods), meds: sorted(meds), liquids: sorted(liquids) }
 }
 
+/** Last loaded value: forms start with it, so the chips are there on the first paint. */
+let last: Suggestions = EMPTY
+const loadAndKeep = () => load().then((v) => { last = v; return v })
+
+/** Warm the cache early (called at start-up and after each save). */
+export function preloadSuggestions() { cache ??= loadAndKeep() }
+
 export function useSuggestions(): Suggestions {
-  const [s, setS] = useState<Suggestions>(EMPTY)
+  const [s, setS] = useState<Suggestions>(() => last)
   useEffect(() => {
     let alive = true
-    cache ??= load()
+    cache ??= loadAndKeep()
     cache.then((v) => { if (alive) setS(v) }).catch(() => {})
     return () => { alive = false }
   }, [])

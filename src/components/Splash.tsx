@@ -21,11 +21,14 @@ export function Splash() {
     return () => window.clearTimeout(h)
   }, [])
   useEffect(() => {
-    if (!loaded || !minDone || phase !== 'in') return
-    setPhase('out')
+    if (loaded && minDone && phase === 'in') setPhase('out')
+  }, [loaded, minDone, phase])
+  // Separate effect: the fade-out timer must not be cancelled by the phase change itself.
+  useEffect(() => {
+    if (phase !== 'out') return
     const h = window.setTimeout(() => setPhase('gone'), 520)
     return () => window.clearTimeout(h)
-  }, [loaded, minDone, phase])
+  }, [phase])
 
   if (phase === 'gone') return null
   return (

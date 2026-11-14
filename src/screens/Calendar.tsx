@@ -54,7 +54,7 @@ export function Calendar({ onEdit, onOpenDay }: { onEdit: (e: Entry) => void; on
   // Grid starts on Monday.
   const gridStart = useMemo(() => addDays(month, -((month.getDay() + 6) % 7)), [month])
   const gridEnd = useMemo(() => addDays(gridStart, 42), [gridStart])
-  const { entries } = useEntries(gridStart, gridEnd, filter)
+  const { entries, loading } = useEntries(gridStart, gridEnd, filter, { keepPrevious: true })
 
   const byDay = useMemo(() => {
     const m = new Map<string, Entry[]>()
@@ -101,15 +101,19 @@ export function Calendar({ onEdit, onOpenDay }: { onEdit: (e: Entry) => void; on
         })}
       </div>
 
+      {/* Everything above has a fixed size; only the day's list (last) grows, so
+          nothing moves when the data arrives. */}
+      <button type="button" className="btn primary export-btn" onClick={() => setExporting(true)}>
+        <DownloadIcon size={18} /> {t('exportPdf')}
+      </button>
+
       <div className="cal-day-head">
         <strong>{cap(fmtDate(selected, locale, { weekday: 'long', day: 'numeric', month: 'long' }))}</strong>
         <button type="button" className="link-btn" onClick={() => onOpenDay(selected)}>{t('add')} +</button>
       </div>
-      <Timeline entries={selEntries} onSelect={onEdit} />
-
-      <button type="button" className="btn primary export-btn" onClick={() => setExporting(true)}>
-        <DownloadIcon size={18} /> {t('exportPdf')}
-      </button>
+      <div className="cal-list">
+        {loading && !selEntries.length ? null : <Timeline entries={selEntries} onSelect={onEdit} />}
+      </div>
 
       {exporting && (
         <ExportDialog

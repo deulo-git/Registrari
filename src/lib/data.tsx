@@ -43,8 +43,10 @@ export function useConfig() {
 /**
  * Entries in [from, to). Refetches after any write in this tab and when the
  * app comes back to the foreground (another phone may have added something).
+ * keepPrevious: while a new range loads, keep showing the previous one's
+ * entries instead of none (e.g. the calendar switching months).
  */
-export function useEntries(from: Date, to: Date, types?: EntryType[]) {
+export function useEntries(from: Date, to: Date, types?: EntryType[], opts: { keepPrevious?: boolean } = {}) {
   // Entries are tagged with the range they belong to, so a screen never shows
   // the previous day's entries under the new day while the new ones load.
   const [state, setState] = useState<{ key: string; entries: Entry[] }>({ key: '', entries: [] })
@@ -72,5 +74,5 @@ export function useEntries(from: Date, to: Date, types?: EntryType[]) {
   }, [fromMs, toMs, typesKey])
 
   const ready = state.key === key
-  return { entries: ready ? state.entries : [], loading: !ready }
+  return { entries: ready || opts.keepPrevious ? state.entries : [], loading: !ready }
 }

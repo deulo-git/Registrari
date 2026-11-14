@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { I18nProvider, useI18n } from './lib/i18n'
 import { PinProvider } from './lib/pin'
 import { ConfigProvider } from './lib/data'
@@ -12,6 +12,8 @@ import { EntrySheet } from './components/EntrySheet'
 import { ToastHost } from './components/Toast'
 import { ConfirmHost } from './components/Confirm'
 import { Splash } from './components/Splash'
+import { onDataChange } from './lib/api'
+import { preloadSuggestions } from './lib/suggestions'
 import { CalendarIcon, FolderIcon, HomeIcon, SettingsIcon } from './components/Icons'
 
 type Tab = 'today' | 'calendar' | 'documents' | 'settings'
@@ -21,6 +23,12 @@ function Shell() {
   const [tab, setTab] = useState<Tab>('today')
   const [day, setDay] = useState(() => startOfDay(new Date()))
   const [sheet, setSheet] = useState<{ type: EntryType; entry?: Entry; date: Date } | null>(null)
+
+  // Suggestions are ready before any form opens (and again after each save).
+  useEffect(() => {
+    preloadSuggestions()
+    return onDataChange(() => window.setTimeout(preloadSuggestions, 0))
+  }, [])
 
   const add = useCallback((type: EntryType, date = day) => setSheet({ type, date }), [day])
   const edit = useCallback((entry: Entry) => setSheet({ type: entry.type, entry, date: new Date(entry.occurred_at) }), [])

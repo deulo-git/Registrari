@@ -776,3 +776,21 @@ html, body { overflow-x: hidden; }
 .linked-doc .grow { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .doc-appt { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; color: #0d9488; background: #ccfbf1; border-radius: 99px; padding: 3px 8px; align-self: flex-start; margin-top: 4px; }
 .day-title small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+
+/* ════════════════ v0.7: no layout jumps while data loads ════════════════ */
+
+/* Today: the list always takes the same space, so the + button never moves. */
+.today-screen .day-content { flex: 0 0 36%; max-height: 36%; }
+.today-screen .day-content:empty { display: flex; }
+
+/* Calendar: fixed-size cells (dots never make a row taller), list grows last. */
+.cal-day { aspect-ratio: auto; height: 50px; overflow: hidden; }
+.cal-dots { height: 14px; overflow: hidden; align-content: flex-start; }
+.export-btn { margin-top: 0; }
+.cal-list { min-height: 120px; }
+
+.skeleton-row {
+  height: 40px; border-radius: 10px;
+  background: linear-gradient(90deg, var(--line) 0%, #eef6f0 50%, var(--line) 100%);
+  background-size: 200% 100%; animation: shimmer 1.4s linear infinite;
+}

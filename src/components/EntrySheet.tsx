@@ -686,7 +686,7 @@ function DocumentForm({ data, set, pending, setPending }: {
 
 function AppointmentForm({ data, set, entryId }: { data: AppointmentData; set: SetData; entryId?: string }) {
   const { t, locale } = useI18n()
-  const [docs, setDocs] = useState<Entry[]>([])
+  const [docs, setDocs] = useState<Entry[] | null>(null)
   useEffect(() => {
     if (!entryId) return
     supabase.from('entries').select('*').eq('type', 'document').eq('data->>appointmentId', entryId)
@@ -715,7 +715,7 @@ function AppointmentForm({ data, set, entryId }: { data: AppointmentData; set: S
       {entryId && (
         <div className="field">
           <span>{t('linkedDocs')}</span>
-          {docs.length ? (
+          {docs === null ? <div className="skeleton-row" /> : docs.length ? (
             <ul className="file-list">
               {docs.map((d) => {
                 const dd = d.data as DocumentData
