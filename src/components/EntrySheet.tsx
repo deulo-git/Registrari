@@ -260,23 +260,39 @@ function WaterForm({ data, set, glassMl }: { data: WaterData; set: SetData; glas
   const sugg = useSuggestions()
   const [unit, setUnit] = useState<'glass' | 'ml' | 'l'>('ml')
   const kind = data.kind || 'water'
+  // Plain water and every other drink are two different things: only water
+  // fills the button and counts towards the daily goal.
+  const isWater = kind === 'water'
   const builtIn = (LIQUID_KINDS as readonly string[]).includes(kind)
   const [custom, setCustom] = useState(builtIn ? '' : kind)
-  const kinds = [...LIQUID_KINDS, ...sugg.liquids]
+  const kinds = [...LIQUID_KINDS.filter((k) => k !== 'water'), ...sugg.liquids]
   const kindPicker = (
-    <div className="field">
-      <span>{t('liquidKind')}</span>
-      <div className="chips">
-        {kinds.map((k) => (
-          <button key={k} type="button" className={'chip' + (kind === k ? ' on' : '')}
-            onClick={() => { set({ ...data, kind: k }); setCustom('') }}>
-            {liquidLabel(k)}
-          </button>
-        ))}
+    <>
+      <div className="segmented wide">
+        <button type="button" className={isWater ? 'on' : ''} onClick={() => { set({ ...data, kind: 'water' }); setCustom('') }}>
+          {t('drinkWater')}
+        </button>
+        <button type="button" className={!isWater ? 'on' : ''}
+          onClick={() => { if (isWater) set({ ...data, kind: LIQUID_KINDS[1] }) }}>
+          {t('drinkOther')}
+        </button>
       </div>
-      <input value={custom} placeholder={t('otherLiquid')}
-        onChange={(e) => { setCustom(e.target.value); set({ ...data, kind: e.target.value.trim() || 'water' }) }} />
-    </div>
+      {!isWater && (
+        <div className="field">
+          <span>{t('liquidKind')}</span>
+          <div className="chips">
+            {kinds.map((k) => (
+              <button key={k} type="button" className={'chip' + (kind === k ? ' on' : '')}
+                onClick={() => { set({ ...data, kind: k }); setCustom('') }}>
+                {liquidLabel(k)}
+              </button>
+            ))}
+          </div>
+          <input value={custom} placeholder={t('otherLiquid')}
+            onChange={(e) => { setCustom(e.target.value); set({ ...data, kind: e.target.value.trim() || LIQUID_KINDS[1] }) }} />
+        </div>
+      )}
+    </>
   )
   const quick = [
     { ml: glassMl, label: `1 ${t('glass')}`, sub: fmtMl(glassMl) },

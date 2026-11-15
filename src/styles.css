@@ -946,3 +946,22 @@ html:has(.app.on-today), body:has(.app.on-today) { overflow: hidden; overscroll-
   background: rgba(255, 255, 255, .92); padding: 2px 8px; border-radius: 99px;
   box-shadow: 0 2px 6px rgba(21, 128, 61, .12); font-size: 12.5px;
 }
+
+/* ── Today: day summary between the picker and the + button ── */
+.day-summary {
+  flex: none; list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; justify-content: center;
+  gap: 6px; max-height: 96px; overflow: hidden;
+}
+.day-summary li {
+  padding: 5px 11px; border-radius: 99px; font-size: 13px; font-weight: 600; white-space: nowrap;
+  color: var(--c); background: color-mix(in srgb, var(--c) 12%, white); border: 1px solid color-mix(in srgb, var(--c) 30%, white);
+}
+.day-summary .sum-none { --c: var(--muted); font-weight: 500; background: none; border-color: transparent; }
+
+/* ── No sideways scroll inside forms: children may shrink, long text wraps ── */
+.sheet, .guide-box { max-width: min(560px, 100vw); }
+.sheet-body { overflow-x: hidden; }
+.sheet-body > *, .sheet-body .field, .food, .food-row, .row { min-width: 0; max-width: 100%; }
+.sheet-body input, .sheet-body select, .sheet-body textarea { min-width: 0; max-width: 100%; }
+.sheet-body input[type='datetime-local'] { width: 100%; }
+.chips, .time-chips { flex-wrap: wrap; }

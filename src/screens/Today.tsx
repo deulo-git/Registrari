@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useEntries, useConfig } from '../lib/data'
-import { useI18n } from '../lib/i18n'
+import { useI18n, type TKey } from '../lib/i18n'
 import { addDays, cap, fmtDate, sameDay, startOfDay } from '../lib/format'
-import { isPlainWater, type EntryType, type WaterData } from '../lib/types'
+import { ENTRY_TYPES, GAS_LABELS, TYPE_COLOR, isPlainWater, type EntryType, type GasData, type WaterData } from '../lib/types'
+import { fmtMl } from '../lib/format'
 import { AddButton } from '../components/AddButton'
 import { Pet, callPet } from '../components/Pet'
 import { ChevronLeft, ChevronRight } from '../components/Icons'
@@ -24,9 +25,10 @@ const OUT_MS = 170
 
 /**
  * Today screen, exactly the size of the viewport (no scrolling either way):
- * day picker on top, the big + button at the vertical centre of the screen,
- * and Pipa walking below it, just above the tab bar. The day's entries live
- * in the calendar: tapping the date goes there. Swiping left/right anywhere
+ * day picker on top, a one-line-per-kind summary of the day's records, the big
+ * + button at the vertical centre of the screen, and Pipa walking below it,
+ * just above the tab bar. The full entries live in the calendar: tapping the
+ * date goes there. Swiping left/right anywhere
  * changes day (the button's water is that day's water). Tapping empty space
  * calls Pipa back when she has wandered off.
  */
@@ -41,7 +43,7 @@ export function Today({ active, day, setDay, onAdd, onOpenCalendar }: Props) {
   const [entering, setEntering] = useState(true)
   const from = useMemo(() => startOfDay(day), [day])
   const to = useMemo(() => addDays(from, 1), [from])
-  const { entries } = useEntries(from, to, ['water'])
+  const { entries } = useEntries(from, to)
 
   const isToday = sameDay(day, new Date())
   const isYesterday = sameDay(day, addDays(new Date(), -1))
@@ -50,6 +52,30 @@ export function Today({ active, day, setDay, onAdd, onOpenCalendar }: Props) {
     .filter((e) => isPlainWater(e.data as WaterData))
     .reduce((s, e) => s + ((e.data as WaterData).ml || 0), 0)
   const water = waterMl / (config.waterGoalMl || 2000)
+
+  // One chip per kind of record logged that day: "2 àpats", "> 2 ventilacions"...
+  // Plain water and other drinks are told apart, as in the button.
+  const summary = useMemo(() => {
+    const out: { key: string; type: EntryType; text: string }[] = []
+    const otherMl = entries
+      .filter((e) => e.type === 'water' && !isPlainWater(e.data as WaterData))
+      .reduce((s, e) => s + ((e.data as WaterData).ml || 0), 0)
+    if (waterMl > 0) out.push({ key: 'aigua', type: 'water', text: `${t('drinkWater')} ${fmtMl(waterMl)}` })
+    if (otherMl > 0) out.push({ key: 'liq', type: 'water', text: `${t('sumPl_water')} ${fmtMl(otherMl)}` })
+    for (const type of ENTRY_TYPES) {
+      if (type === 'water') continue
+      const list = entries.filter((e) => e.type === type)
+      if (!list.length) continue
+      if (type === 'gas') {
+        const top = Math.max(...list.map((e) => (e.data as GasData).level ?? 0))
+        out.push({ key: type, type, text: `${GAS_LABELS[top] ?? top} ${t('sumPl_gas')}` })
+      } else {
+        const label = list.length === 1 ? t(`type_${type}` as TKey).toLowerCase() : t(`sumPl_${type}` as TKey)
+        out.push({ key: type, type, text: `${list.length} ${label}` })
+      }
+    }
+    return out
+  }, [entries, waterMl, t])
 
   // Coming back to this tab: play the entrance animation again (Pipa is not
   // re-created, she just carries on).
@@ -125,6 +151,14 @@ export function Today({ active, day, setDay, onAdd, onOpenCalendar }: Props) {
         )}
         <button type="button" className="day-arrow" onClick={() => go(1)} disabled={isToday} aria-label="→"><ChevronRight size={26} /></button>
       </div>
+
+      <ul className="day-summary" aria-label={t('sumTitle')}>
+        {summary.length === 0
+          ? <li className="sum-none">{t('sumNone')}</li>
+          : summary.map((x) => (
+            <li key={x.key} style={{ '--c': TYPE_COLOR[x.type] } as React.CSSProperties}>{x.text}</li>
+          ))}
+      </ul>
 
       <section className="hero" onClick={(e) => {
         if (!(e.target as HTMLElement).closest('.add-hub, .pet, .poop')) callPet()
