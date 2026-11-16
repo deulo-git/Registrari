@@ -75,7 +75,8 @@ export function Pet({ hidden, water }: Props) {
 
   const say = (list: PhraseList) => {
     if (sulking.current) return
-    const text = phrase(list, s.current.lang)
+    // Never complains of thirst when the button is more than half full.
+    const text = phrase(list, s.current.lang, s.current.water > 0.5 ? /\b(set|sed)\b|aigua siusp|agua porfavor|poca (aigua|agua)/i : undefined)
     if (!text) return
     window.clearTimeout(sayTimer.current)
     setSpeech({ text, id: Date.now() })
@@ -135,7 +136,7 @@ export function Pet({ hidden, water }: Props) {
         moveTo(target, false, () => {
           setFacing(left ? 1 : -1)
           setMood('drink')
-          if (s.current.water < 0.08) say('set')
+          if (s.current.water < 0.08 && s.current.water <= 0.5) say('set')
           schedule(() => rest(), rand(4000, 6000))
         })
         return
@@ -183,7 +184,7 @@ export function Pet({ hidden, water }: Props) {
   const chatter = () => {
     const cur = s.current
     if (cur.mood !== 'sleep' && cur.mood !== 'away' && cur.mood !== 'leave' && !cur.hidden) {
-      const thirsty = cur.water < 0.3 && new Date().getHours() >= 12
+      const thirsty = cur.water < 0.3 && cur.water <= 0.5 && new Date().getHours() >= 12
       say(thirsty && Math.random() < PIPA.thirstyChance ? 'set' : 'sola')
     }
     chatterTimer.current = window.setTimeout(chatter, rand(PIPA.talkEverySec[0], PIPA.talkEverySec[1]) * 1000)
@@ -216,7 +217,27 @@ export function Pet({ hidden, water }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  /** Rubbing her belly: hearts keep coming until the finger lifts (no timeout). */
+  const rubbing = useRef(false)
+  const startRub = (e: React.PointerEvent) => {
+    if (s.current.mood !== 'tummy' && s.current.mood !== 'rub') return
+    rubbing.current = true
+    window.clearTimeout(timer.current)
+    window.clearTimeout(sayTimer.current)
+    setSpeech(null)
+    setMood('rub')
+    try { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId) } catch { /* ignore */ }
+  }
+  const stopRub = () => {
+    if (!rubbing.current) return
+    rubbing.current = false
+    setMood('happy')
+    say('rascar')
+    schedule(next, 3200)
+  }
+
   const poke = () => {
+    if (s.current.mood === 'tummy' || s.current.mood === 'rub') return
     if (sulking.current || s.current.mood === 'away' || s.current.mood === 'leave') return
     const now = Date.now()
     // At most one phrase per second, however fast she is tapped.
@@ -300,7 +321,7 @@ export function Pet({ hidden, water }: Props) {
       <div ref={track} className={'pet-track' + (hidden ? ' hidden' : '')}>
         <div ref={petRef} className={`pet mood-${mood}`}
           style={{ left: `${x * 100}%`, transitionDuration: `${moveMs}ms` }}
-          onClick={poke} role="button" aria-label="Pipa">
+          onClick={poke} onPointerDown={startRub} onPointerUp={stopRub} onPointerCancel={stopRub} role="button" aria-label="Pipa">
           <div className="pet-flip" style={{ transform: `scaleX(${facing})` }}>
             <PoodleSvg />
             {mood === 'play' && <span className="pet-ball" />}
@@ -313,7 +334,7 @@ export function Pet({ hidden, water }: Props) {
           {mood === 'howl' && <span className="pet-notes"><i>♪</i><i>♫</i><i>♪</i></span>}
           </div>
           {mood === 'sleep' && <span className="pet-z"><i>z</i><i>z</i><i>Z</i></span>}
-          {mood === 'happy' && <span className="pet-hearts"><i>♥</i><i>♥</i><i>♥</i></span>}
+          {(mood === 'happy' || mood === 'rub') && <span className="pet-hearts"><i>♥</i><i>♥</i><i>♥</i></span>}
         </div>
       </div>
       {/* Speech lives in its own layer above the button (Pipa walks behind it). */}

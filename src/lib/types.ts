@@ -83,6 +83,14 @@ export const GAS_LABELS = ['0', '> 2', '> 5', '> 10']
 export interface MedicationData { name: string; dose?: string; unit?: string; notes?: string }
 
 export interface StoredFile { path: string; name: string; mime: string; size: number }
+/** Background colour of each kind of document (same palette family as TYPE_COLOR). */
+export const DOC_COLOR: Record<string, string> = {
+  prescription: '#db2777',
+  result: '#0d9488',
+  analysis: '#dc2626',
+  report: '#7c3aed',
+  other: '#475569',
+}
 export const DOC_KINDS = ['prescription', 'result', 'analysis', 'report', 'other'] as const
 export type DocKind = (typeof DOC_KINDS)[number]
 export interface DocumentData {

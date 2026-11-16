@@ -668,7 +668,10 @@ function DocumentForm({ data, set, pending, setPending }: {
           {data.files.map((f, i) => (
             <li key={f.path}>
               <FileIcon size={18} />
-              <button type="button" className="link-btn" onClick={() => openStored(f)}>{f.name}</button>
+              <span className="grow file-name">{f.name}</span>
+              <button type="button" className="btn primary small" onClick={() => openStored(f)}>
+                {f.mime?.startsWith('image/') ? t('viewImage') : f.mime === 'application/pdf' || /\.pdf$/i.test(f.name) ? t('viewPdf') : t('viewFile')}
+              </button>
               <button type="button" className="icon-btn small" aria-label={t('delete')}
                 onClick={() => set({ ...data, files: data.files.filter((_, j) => j !== i) })}><CloseIcon size={16} /></button>
             </li>

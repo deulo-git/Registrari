@@ -965,3 +965,20 @@ html:has(.app.on-today), body:has(.app.on-today) { overflow: hidden; overscroll-
 .sheet-body input, .sheet-body select, .sheet-body textarea { min-width: 0; max-width: 100%; }
 .sheet-body input[type='datetime-local'] { width: 100%; }
 .chips, .time-chips { flex-wrap: wrap; }
+
+/* documents: kind-coloured cards, date filter */
+.doc-card { background: color-mix(in srgb, var(--c) 16%, var(--surface)); }
+.doc-filter { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
+.doc-filter input { padding: 8px 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); font: inherit; }
+.file-list .file-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.day-summary .sum-chip { background: none; border: 0; padding: 0; font: inherit; color: inherit; cursor: pointer; }
+
+/* rub: belly scratched, hearts until the finger lifts */
+.mood-rub .poodle { transform-box: view-box; transform-origin: 50% 50%; transform: rotate(180deg); }
+.mood-rub .p-leg { animation: wiggle .22s ease-in-out infinite alternate; }
+.mood-rub .p-tail { animation: wag .15s ease-in-out infinite alternate; }
+.mood-rub .p-tongue, .mood-rub .p-blush { opacity: 1; }
+.mood-rub .p-eye-open { opacity: 0; }
+.mood-rub .p-eye-closed { opacity: 1; }
+.mood-rub .p-shadow { opacity: 0; }
+.pet { touch-action: none; -webkit-user-select: none; user-select: none; }

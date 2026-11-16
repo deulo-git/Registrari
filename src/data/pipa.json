@@ -6,7 +6,7 @@
     "Les llistes de 'frases': tocar (quan la toques), tocarDormint (si la toques mentre dorm), sola (quan parla sense que la toquis),",
     "set (si hi ha poca aigua), desar (quan es desa un registre), aiguaPlena (si ja s'ha arribat a l'objectiu d'aigua),",
     "cridada (quan no hi és i la crides tocant la pantalla), caca (quan ha fet caca), cacaRecollida (quan la recollim),",
-    "benvinguda (pantalla de càrrega en obrir l'app), enfadada (quan la toques massa i s'enfada).",
+    "rascar (quan deixes de gratar-li la panxa), benvinguda (pantalla de càrrega en obrir l'app), enfadada (quan la toques massa i s'enfada).",
     "'moviments' són els pesos de cada cosa que pot fer, de dia i de nit. Posa 0 per desactivar-ne una.",
     "'parlar.cadaSegons' = cada quant parla sola (mínim i màxim, en segons). 'fora.segons' = quant de temps pot estar fora de pantalla.",
     "'enfadar': si la toques més de 'despresDeTocs' vegades en 'finestraSegons' segons, cada toc més té 'probabilitat' (0-1) que s'enfadi i marxi corrent.",
@@ -113,6 +113,12 @@
       { "pes": 1, "ca": "I el carnet de conduir?", "es": "¿Y el carnet de conducir?" },
       { "pes": 1, "ca": "Guau!", "es": "¡Guau!" },
       { "pes": 1, "ca": "Em tiro pets, com tu!", "es": "Me tiro pedos, como tu!" }
+    ],
+    "rascar": [
+      { "pes": 2, "ca": "Jasta?", "es": "¿Ya está?" },
+      { "pes": 2, "ca": "Meeeees", "es": "Meeeeees" },
+      { "pes": 2, "ca": "Gràcies, m'ha agradat", "es": "Gracias, me ha gustado" },
+      { "pes": 2, "ca": "Quin dit màgic que tens", "es": "Qué dedo mágico tienes" }
     ],
     "set": [
       { "pes": 3, "ca": "Tinc set…", "es": "Tengo sed…" },

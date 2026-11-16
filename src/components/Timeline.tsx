@@ -1,4 +1,4 @@
-import { TYPE_COLOR, type Entry } from '../lib/types'
+import { TYPE_COLOR, symptomList, type SymptomData, type Entry } from '../lib/types'
 import { useI18n, type TKey } from '../lib/i18n'
 import { describe, fmtTime } from '../lib/format'
 import { TypeIcon } from './Icons'
@@ -18,7 +18,7 @@ export function Timeline({ entries, onSelect, empty }: {
             <time>{fmtTime(e.occurred_at, locale)}</time>
             <span className="tl-dot"><TypeIcon type={e.type} size={18} color="#fff" /></span>
             <span className="tl-text">
-              <strong>{t(`type_${e.type}` as TKey)}</strong>
+              <strong>{e.type === 'symptom' && symptomList(e.data as SymptomData).length > 1 ? t('type_symptoms') : t(`type_${e.type}` as TKey)}</strong>
               <span>{describe(e, t, { symptomLabel, liquidLabel })}</span>
             </span>
           </button>

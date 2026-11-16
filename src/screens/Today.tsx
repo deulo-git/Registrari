@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useEntries, useConfig } from '../lib/data'
 import { useI18n, type TKey } from '../lib/i18n'
 import { addDays, cap, fmtDate, sameDay, startOfDay } from '../lib/format'
-import { ENTRY_TYPES, GAS_LABELS, TYPE_COLOR, isPlainWater, type EntryType, type GasData, type WaterData } from '../lib/types'
+import { ENTRY_TYPES, GAS_LABELS, TYPE_COLOR, isPlainWater, type EntryType, symptomList, type SymptomData, type GasData, type WaterData } from '../lib/types'
 import { fmtMl } from '../lib/format'
 import { AddButton } from '../components/AddButton'
 import { Pet, callPet } from '../components/Pet'
@@ -69,6 +69,9 @@ export function Today({ active, day, setDay, onAdd, onOpenCalendar }: Props) {
       if (type === 'gas') {
         const top = Math.max(...list.map((e) => (e.data as GasData).level ?? 0))
         out.push({ key: type, type, text: `${GAS_LABELS[top] ?? top} ${t('sumPl_gas')}` })
+      } else if (type === 'symptom') {
+        const n = list.reduce((s, e) => s + Math.max(1, symptomList(e.data as SymptomData).length), 0)
+        out.push({ key: type, type, text: `${n} ${t(n === 1 ? 'type_symptom' : 'type_symptoms').toLowerCase()}` })
       } else {
         const label = list.length === 1 ? t(`type_${type}` as TKey).toLowerCase() : t(`sumPl_${type}` as TKey)
         out.push({ key: type, type, text: `${list.length} ${label}` })
@@ -156,7 +159,9 @@ export function Today({ active, day, setDay, onAdd, onOpenCalendar }: Props) {
         {summary.length === 0
           ? <li className="sum-none">{t('sumNone')}</li>
           : summary.map((x) => (
-            <li key={x.key} style={{ '--c': TYPE_COLOR[x.type] } as React.CSSProperties}>{x.text}</li>
+            <li key={x.key} style={{ '--c': TYPE_COLOR[x.type] } as React.CSSProperties}>
+              <button type="button" className="sum-chip" onClick={() => onOpenCalendar(day)}>{x.text}</button>
+            </li>
           ))}
       </ul>
 

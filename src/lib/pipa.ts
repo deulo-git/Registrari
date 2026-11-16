@@ -11,7 +11,7 @@ export type Mood =
   | 'walk' | 'run' | 'sit' | 'lie' | 'sniff' | 'play' | 'chase' | 'roll'
   | 'stretch' | 'scratch' | 'beg' | 'dig' | 'drink' | 'sleep' | 'poop' | 'leave'
   | 'dance' | 'shake' | 'bow' | 'hop' | 'butterfly' | 'bone' | 'sneeze' | 'wave' | 'howl' | 'tummy'
-  | 'happy' | 'away'
+  | 'rub' | 'happy' | 'away'
 
 /** Catalan names used in the JSON → internal mood ids. */
 const MOVE_IDS: Record<string, Mood> = {
@@ -45,7 +45,7 @@ const MOVE_IDS: Record<string, Mood> = {
 
 export type PhraseList =
   | 'tocar' | 'tocarDormint' | 'sola' | 'set' | 'desar' | 'aiguaPlena' | 'cridada' | 'caca' | 'cacaRecollida'
-  | 'benvinguda' | 'enfadada'
+  | 'benvinguda' | 'enfadada' | 'rascar'
 
 interface Phrase { pes?: number; ca?: string; es?: string }
 
@@ -81,10 +81,10 @@ function weighted<T>(items: [T, number][]): T | undefined {
 }
 
 /** A random phrase from a list, honouring weights; falls back to the other language. */
-export function phrase(list: PhraseList, lang: Lang): string {
+export function phrase(list: PhraseList, lang: Lang, exclude?: RegExp): string {
   const items = (cfg.frases[list] ?? [])
     .map((p) => [p[lang] ?? p.ca ?? p.es ?? '', p.pes ?? 1] as [string, number])
-    .filter(([text]) => text)
+    .filter(([text]) => text && !(exclude && exclude.test(text)))
   return weighted(items) ?? ''
 }
 
