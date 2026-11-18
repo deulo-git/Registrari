@@ -52,7 +52,16 @@ function Carousel({ files, index, setIndex, render, className }: {
       }}>
         {files.map((f, i) => <div key={f.path} className="dv-slide">{render(f, i)}</div>)}
       </div>
-      {files.length > 1 && <span className="dv-count">{index + 1} / {files.length}</span>}
+      {files.length > 1 && (
+        <>
+          <span className="dv-count">{index + 1} / {files.length}</span>
+          <button type="button" className="dv-nav prev" disabled={index === 0} onClick={() => setIndex(index - 1)} aria-label="←"><ChevronLeft size={22} /></button>
+          <button type="button" className="dv-nav next" disabled={index >= files.length - 1} onClick={() => setIndex(index + 1)} aria-label="→"><ChevronRight size={22} /></button>
+          <div className="dv-dots">
+            {files.map((f, i) => <button key={f.path} type="button" className={i === index ? 'on' : ''} onClick={() => setIndex(i)} aria-label={`${i + 1}/${files.length}`} />)}
+          </div>
+        </>
+      )}
     </div>
   )
 }
@@ -96,10 +105,14 @@ function Lightbox({ files, start, onClose }: { files: StoredFile[]; start: numbe
   const { t } = useI18n()
   const [i, setI] = useState(start)
   useEffect(() => {
-    const k = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.stopImmediatePropagation(); onClose() } }
+    const k = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { e.stopImmediatePropagation(); onClose() }
+      else if (e.key === 'ArrowLeft') { e.stopImmediatePropagation(); setI((v) => Math.max(0, v - 1)) }
+      else if (e.key === 'ArrowRight') { e.stopImmediatePropagation(); setI((v) => Math.min(files.length - 1, v + 1)) }
+    }
     window.addEventListener('keydown', k, true)
     return () => window.removeEventListener('keydown', k, true)
-  }, [onClose])
+  }, [onClose, files.length])
   return (
     <div className="dv-light" role="dialog" aria-modal="true">
       <header>

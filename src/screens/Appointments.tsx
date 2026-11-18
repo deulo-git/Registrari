@@ -5,6 +5,18 @@ import { apptLabel, cap, fmtDate, fmtTime } from '../lib/format'
 import { APPOINTMENT_KINDS, TYPE_COLOR, apptGroup, type AppointmentData, type Entry } from '../lib/types'
 import { PlusIcon, SettingsIcon, TypeIcon } from '../components/Icons'
 
+/** Soft background / ink pairs for the calendar badge; each kind of appointment gets its own. */
+const BADGES: [string, string][] = [
+  ['#ccfbf1', '#0f766e'], ['#dbeafe', '#1d4ed8'], ['#fce7f3', '#be185d'], ['#fef3c7', '#b45309'],
+  ['#ede9fe', '#6d28d9'], ['#dcfce7', '#15803d'], ['#ffe4e6', '#be123c'], ['#e0f2fe', '#0369a1'],
+]
+function badgeFor(d: AppointmentData) {
+  const key = (d.sub?.trim() || (d.title?.trim() ?? '') || d.kind).toLocaleLowerCase()
+  let h = 0
+  for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) >>> 0
+  return BADGES[h % BADGES.length]
+}
+
 /** Every appointment the patient has had, newest first, grouped by year. */
 export function Appointments({ onAdd, onEdit, onSettings }: { onAdd: () => void; onEdit: (e: Entry) => void; onSettings: () => void }) {
   const { t, locale } = useI18n()
@@ -61,7 +73,7 @@ export function Appointments({ onAdd, onEdit, onSettings }: { onAdd: () => void;
               return (
                 <li key={e.id}>
                   <button type="button" className={'appt-item' + (future ? ' future' : '')} onClick={() => onEdit(e)}>
-                    <span className="appt-date">
+                    <span className="appt-date" style={{ background: badgeFor(d)[0], color: badgeFor(d)[1] }}>
                       <b>{date.getDate()}</b>
                       <small>{fmtDate(date, locale, { month: 'short' })}</small>
                     </span>

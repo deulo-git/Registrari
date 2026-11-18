@@ -40,8 +40,6 @@ export function TypeFilter({ value, onChange }: { value: EntryType[]; onChange: 
   )
 }
 
-const OPEN_KEY = 'registrari.calOpen'
-
 /** Cronologia: the records in order, with the calendar as a collapsible helper. */
 export function Calendar({ initialDay, onEdit, onOpenDay, onSettings }: {
   /** Day to open on (the one shown in Today). */
@@ -52,16 +50,12 @@ export function Calendar({ initialDay, onEdit, onOpenDay, onSettings }: {
   const [selected, setSelected] = useState(() => startOfDay(initialDay))
   const [filter, setFilterState] = useState<EntryType[]>(readFilter)
   const [exporting, setExporting] = useState(false)
-  const [calOpen, setCalOpenState] = useState(() => { try { return localStorage.getItem(OPEN_KEY) !== '0' } catch { return true } })
-  const setCalOpen = (v: boolean) => {
-    setCalOpenState(v)
-    try { localStorage.setItem(OPEN_KEY, v ? '1' : '0') } catch { /* ignore */ }
-  }
+  // The calendar always starts folded.
+  const [calOpen, setCalOpen] = useState(false)
   const setFilter = (v: EntryType[]) => {
     setFilterState(v)
     try { localStorage.setItem(FILTER_KEY, JSON.stringify(v)) } catch { /* ignore */ }
   }
-
   // Grid starts on Monday.
   const gridStart = useMemo(() => addDays(month, -((month.getDay() + 6) % 7)), [month])
   const gridEnd = useMemo(() => addDays(gridStart, 42), [gridStart])
