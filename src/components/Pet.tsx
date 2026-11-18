@@ -354,7 +354,9 @@ export function Pet({ hidden, water }: Props) {
           {mood === 'howl' && <span className="pet-notes"><i>♪</i><i>♫</i><i>♪</i></span>}
           </div>
           {mood === 'sleep' && <span className="pet-z"><i>z</i><i>z</i><i>Z</i></span>}
-          {(mood === 'happy' || mood === 'rub') && <span className="pet-hearts"><i>♥</i><i>♥</i><i>♥</i><i>♥</i><i>♥</i></span>}
+          {(mood === 'happy' || mood === 'rub') && (
+            <span className="pet-hearts">{Array.from({ length: mood === 'rub' ? 12 : 5 }, (_, i) => <i key={i}>♥</i>)}</span>
+          )}
         </div>
       </div>
       {/* Speech lives in its own layer above the button (Pipa walks behind it). */}

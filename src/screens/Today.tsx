@@ -187,7 +187,7 @@ export function Today({ active, day, setDay, onAdd, onOpenCalendar }: Props) {
           ))}
       </ul>
 
-      {since !== undefined && (
+      {isToday && since !== undefined && (
         <div className={'bowel-since' + (since && since.days >= 2 ? ' warn' : '')} style={{ '--c': TYPE_COLOR.bowel } as React.CSSProperties}>
           <TypeIcon type="bowel" size={16} />
           {since === null ? t('bowelNone') : (
