@@ -5,12 +5,13 @@
 --   edit     view, add, edit and delete records (no settings)
 --   limited  view only, and only the record types the owner picks
 --
+-- Safe to run again: every step skips what already exists.
 -- Existing data (owner_id is null) stays hidden until the first person who
 -- finishes sign-up claims it with public.claim_legacy().
 
 -- ── Profiles ─────────────────────────────────────────────────────────────
 
-create table public.profiles (
+create table if not exists public.profiles (
   id uuid primary key references auth.users (id) on delete cascade,
   email text,
   first_name text not null,
@@ -27,9 +28,9 @@ create table public.profiles (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
-create unique index profiles_one_legacy on public.profiles (legacy) where legacy;
+create unique index if not exists profiles_one_legacy on public.profiles (legacy) where legacy;
 
-create table public.shares (
+create table if not exists public.shares (
   id uuid primary key default gen_random_uuid(),
   owner_id uuid not null references public.profiles (id) on delete cascade,
   helper_email text not null,
@@ -40,11 +41,11 @@ create table public.shares (
   created_at timestamptz not null default now(),
   unique (owner_id, helper_email)
 );
-create index shares_helper_idx on public.shares (helper_id);
-create index shares_email_idx on public.shares (lower(helper_email));
+create index if not exists shares_helper_idx on public.shares (helper_id);
+create index if not exists shares_email_idx on public.shares (lower(helper_email));
 
-alter table public.entries add column owner_id uuid references public.profiles (id) on delete cascade;
-create index entries_owner_idx on public.entries (owner_id, occurred_at desc);
+alter table public.entries add column if not exists owner_id uuid references public.profiles (id) on delete cascade;
+create index if not exists entries_owner_idx on public.entries (owner_id, occurred_at desc);
 
 -- ── Access helpers ───────────────────────────────────────────────────────
 
@@ -144,24 +145,35 @@ drop policy if exists settings_read on public.app_settings;
 revoke all on public.entries, public.app_settings, public.profiles, public.shares from anon, authenticated;
 grant select, insert, update, delete on public.entries, public.profiles, public.shares to authenticated;
 
+drop policy if exists entries_select on public.entries;
 create policy entries_select on public.entries for select to authenticated using (public.can_read(owner_id, type));
+drop policy if exists entries_insert on public.entries;
 create policy entries_insert on public.entries for insert to authenticated with check (public.can_write(owner_id));
+drop policy if exists entries_update on public.entries;
 create policy entries_update on public.entries for update to authenticated
   using (public.can_write(owner_id)) with check (public.can_write(owner_id));
+drop policy if exists entries_delete on public.entries;
 create policy entries_delete on public.entries for delete to authenticated using (public.can_write(owner_id));
 
+drop policy if exists profiles_select on public.profiles;
 create policy profiles_select on public.profiles for select to authenticated using (
   id = auth.uid()
   or exists (select 1 from public.shares s where s.owner_id = profiles.id and s.helper_id = auth.uid()));
+drop policy if exists profiles_insert on public.profiles;
 create policy profiles_insert on public.profiles for insert to authenticated with check (id = auth.uid());
+drop policy if exists profiles_update on public.profiles;
 create policy profiles_update on public.profiles for update to authenticated
   using (public.can_admin(id)) with check (public.can_admin(id));
 
+drop policy if exists shares_select on public.shares;
 create policy shares_select on public.shares for select to authenticated
   using (owner_id = auth.uid() or helper_id = auth.uid());
+drop policy if exists shares_insert on public.shares;
 create policy shares_insert on public.shares for insert to authenticated with check (owner_id = auth.uid());
+drop policy if exists shares_update on public.shares;
 create policy shares_update on public.shares for update to authenticated
   using (owner_id = auth.uid()) with check (owner_id = auth.uid());
+drop policy if exists shares_delete on public.shares;
 create policy shares_delete on public.shares for delete to authenticated using (owner_id = auth.uid());
 
 -- ── Storage ──────────────────────────────────────────────────────────────
@@ -169,10 +181,13 @@ create policy shares_delete on public.shares for delete to authenticated using (
 drop policy if exists documents_read on storage.objects;
 drop policy if exists documents_upload on storage.objects;
 drop policy if exists documents_delete on storage.objects;
+drop policy if exists documents_read on storage.objects;
 create policy documents_read on storage.objects for select to authenticated
   using (bucket_id = 'documents' and public.can_read_file(name));
+drop policy if exists documents_upload on storage.objects;
 create policy documents_upload on storage.objects for insert to authenticated
   with check (bucket_id = 'documents' and public.can_write_file(name));
+drop policy if exists documents_delete on storage.objects;
 create policy documents_delete on storage.objects for delete to authenticated
   using (bucket_id = 'documents' and public.can_write_file(name));
 
