@@ -30,6 +30,13 @@ export function emitDataChange() { listeners.forEach((f) => f()) }
 export const signInWithGoogle = () =>
   supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.origin } })
 export const signOut = () => supabase.auth.signOut()
+/** Guest: an anonymous session (no sign-up) to which the invitation for this e-mail gets attached. */
+export const signInAsGuest = () => supabase.auth.signInAnonymously()
+export async function guestJoin(email: string): Promise<number> {
+  const { data, error } = await supabase.rpc('guest_join', { p_email: email.trim() })
+  if (error) throw new ApiError('network')
+  return Number(data) || 0
+}
 export async function currentSession(): Promise<Session | null> {
   const { data } = await supabase.auth.getSession()
   return data.session

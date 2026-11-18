@@ -20,9 +20,22 @@ function GoogleG() {
 
 /** Signed-out screen: Google is the only way in. */
 export function SignIn() {
-  const { signIn } = useAuth()
+  const { signIn, guestSignIn } = useAuth()
   const { L, lang, setLang } = useI18n()
   const [busy, setBusy] = useState(false)
+  const [guest, setGuest] = useState(false)
+  const [email, setEmail] = useState('')
+  const okEmail = /^\S+@\S+\.\S+$/.test(email.trim())
+  const enterAsGuest = async () => {
+    if (!okEmail || busy) return
+    setBusy(true)
+    try {
+      if (!(await guestSignIn(email))) {
+        toast(L('Aquest correu no té cap invitació', 'Este correo no tiene ninguna invitación'), 'error')
+        setBusy(false)
+      }
+    } catch { toast(L('No s’ha pogut entrar', 'No se pudo entrar'), 'error'); setBusy(false) }
+  }
   return (
     <div className="auth-screen">
       <div className="auth-card">
@@ -35,6 +48,19 @@ export function SignIn() {
           onClick={async () => { setBusy(true); try { await signIn() } catch { toast(L('No s’ha pogut iniciar sessió', 'No se pudo iniciar sesión'), 'error'); setBusy(false) } }}>
           <GoogleG /> {L('Continua amb Google', 'Continuar con Google')}
         </button>
+        {guest ? (
+          <form className="guest-form" onSubmit={(e) => { e.preventDefault(); enterAsGuest() }}>
+            <label className="field">
+              <span>{L('Correu amb què t’han convidat', 'Correo con el que te han invitado')}</span>
+              <input type="email" inputMode="email" autoComplete="email" autoFocus placeholder="correu@gmail.com"
+                value={email} onChange={(e) => setEmail(e.target.value)} />
+            </label>
+            <button type="submit" className="btn primary" disabled={!okEmail || busy}>{L('Entrar', 'Entrar')}</button>
+          </form>
+        ) : (
+          <button type="button" className="btn ghost" onClick={() => setGuest(true)}>{L('Entra com a convidat', 'Entrar como invitado')}</button>
+        )}
+        {guest && <p className="muted small-print">{L('Sense compte: només veuràs les dades que t’hagin compartit.', 'Sin cuenta: solo verás los datos que te hayan compartido.')}</p>}
         <div className="segmented wide auth-lang">
           {(['ca', 'es'] as const).map((l) => <button key={l} type="button" className={lang === l ? 'on' : ''} onClick={() => setLang(l)}>{l === 'ca' ? 'Català' : 'Castellano'}</button>)}
         </div>
