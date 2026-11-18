@@ -1,5 +1,5 @@
 import {
-  GAS_LABELS, mealTotals, symptomList,
+  CONSULT_SUBS, DOC_KINDS, apptGroup, GAS_LABELS, TEST_SUBS, mealTotals, symptomList,
   type AppointmentData, type BowelData, type DocumentData, type Entry, type GasData, type MealData,
   type MedicationData, type SymptomData, type WaterData,
 } from './types'
@@ -37,9 +37,22 @@ const r1 = (n: number) => Math.round(n * 10) / 10
 
 type T = (k: TKey) => string
 
-/** Short label for an appointment: its own title, or the kind. */
+/** Label of a built-in sub-type key (test_x / consult_x), or the free text itself. */
+export function subLabel(sub: string, t: T) {
+  if ((TEST_SUBS as readonly string[]).includes(sub)) return t(`test_${sub}` as TKey)
+  if ((CONSULT_SUBS as readonly string[]).includes(sub)) return t(`consult_${sub}` as TKey)
+  return sub
+}
+/** Built-in document kinds are translated; custom ones are shown as typed. */
+export function docKindLabel(kind: string, t: T) {
+  return (DOC_KINDS as readonly string[]).includes(kind) ? t(`doc_${kind}` as TKey) : kind
+}
+/** Short label for an appointment: "MRI · abdomen", or its title, or the kind. */
 export function apptLabel(d: AppointmentData, t: T) {
-  return d.title?.trim() || t(`appt_${d.kind}` as TKey)
+  const sub = d.sub?.trim() ? subLabel(d.sub.trim(), t) : ''
+  const title = d.title?.trim() ?? ''
+  if (sub) return title ? `${sub} · ${title}` : sub
+  return title || t(`appt_${d.kind}` as TKey)
 }
 export interface Labels { symptomLabel: (c: string) => string; liquidLabel: (k?: string) => string }
 
@@ -107,7 +120,7 @@ export function describe(e: Entry, t: T, { symptomLabel, liquidLabel }: Labels, 
     }
     case 'document': {
       const d = e.data as DocumentData
-      parts.push(`${t(`doc_${d.kind}` as TKey)}: ${d.title || '—'}`)
+      parts.push(`${docKindLabel(d.kind, t)}: ${d.title || '—'}`)
       if (d.files?.length) parts.push(`${d.files.length} ${t('files').toLowerCase()}`)
       if (d.appointmentLabel) parts.push(`${t('linkedAppt')}: ${d.appointmentLabel}`)
       notes = d.notes
@@ -116,7 +129,7 @@ export function describe(e: Entry, t: T, { symptomLabel, liquidLabel }: Labels, 
     case 'appointment': {
       const d = e.data as AppointmentData
       parts.push(apptLabel(d, t))
-      if (d.title?.trim()) parts.push(t(`appt_${d.kind}` as TKey))
+      if (d.sub?.trim() || d.title?.trim()) parts.push(t(`appt_${apptGroup(d.kind)}` as TKey))
       if (d.place?.trim()) parts.push(d.place.trim())
       if (d.doctor?.trim()) parts.push(d.doctor.trim())
       notes = d.notes

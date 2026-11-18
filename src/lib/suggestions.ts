@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { onDataChange, supabase } from './api'
-import { LIQUID_KINDS, type FoodItem, type MealData, type MedicationData, type MedicationPreset, type WaterData } from './types'
+import { LIQUID_KINDS, apptGroup, type AppointmentData, type DocumentData, type FoodItem, type MealData, type MedicationData, type MedicationPreset, type WaterData } from './types'
 
 /**
  * Names already used, so they don't have to be typed again. Built from the
@@ -12,9 +12,15 @@ export interface Suggestions {
   meds: MedicationPreset[]
   /** Custom drink names (built-in kinds are always shown). */
   liquids: string[]
+  /**
+   * Values already typed in a given text box, most used first. Keys:
+   * notes.<type>, doc.title, doc.kind, appt.title, appt.place, appt.doctor,
+   * appt.sub.<group>, med.dose, med.unit.
+   */
+  fields: Record<string, string[]>
 }
 
-const EMPTY: Suggestions = { foods: [], meds: [], liquids: [] }
+const EMPTY: Suggestions = { foods: [], meds: [], liquids: [], fields: {} }
 let cache: Promise<Suggestions> | null = null
 onDataChange(() => { cache = null })
 
@@ -24,7 +30,6 @@ async function load(): Promise<Suggestions> {
   const { data, error } = await supabase
     .from('entries')
     .select('type,data')
-    .in('type', ['meal', 'medication', 'water'])
     .order('occurred_at', { ascending: false })
     .limit(2000)
   if (error || !data) return EMPTY
@@ -33,6 +38,17 @@ async function load(): Promise<Suggestions> {
   const foods = new Map<string, { v: FoodItem; n: number }>()
   const meds = new Map<string, { v: MedicationPreset; n: number }>()
   const liquids = new Map<string, { v: string; n: number }>()
+  const fields = new Map<string, Map<string, { v: string; n: number }>>()
+  const addField = (key: string, raw: unknown) => {
+    const v = typeof raw === 'string' ? raw.trim() : ''
+    if (!v || v.length > 160) return
+    let m = fields.get(key)
+    if (!m) fields.set(key, (m = new Map()))
+    const k = norm(v)
+    const cur = m.get(k)
+    if (cur) cur.n++
+    else m.set(k, { v, n: 1 })
+  }
   const bump = <T,>(m: Map<string, { v: T; n: number }>, k: string, v: T) => {
     const cur = m.get(k)
     if (cur) cur.n++
@@ -40,6 +56,18 @@ async function load(): Promise<Suggestions> {
   }
 
   for (const row of data as { type: string; data: unknown }[]) {
+    addField(`notes.${row.type}`, (row.data as { notes?: string }).notes)
+    if (row.type === 'document') {
+      const d = row.data as DocumentData
+      addField('doc.title', d.title)
+      addField('doc.kind', d.kind)
+    } else if (row.type === 'appointment') {
+      const d = row.data as AppointmentData
+      addField('appt.title', d.title)
+      addField('appt.place', d.place)
+      addField('appt.doctor', d.doctor)
+      addField(`appt.sub.${apptGroup(d.kind)}`, d.sub)
+    }
     if (row.type === 'meal') {
       for (const it of (row.data as MealData).items ?? []) {
         if (it.name?.trim()) bump(foods, norm(it.name), { ...it, name: it.name.trim() })
@@ -49,6 +77,8 @@ async function load(): Promise<Suggestions> {
       if (m.name?.trim()) {
         const v = { name: m.name.trim(), dose: m.dose ?? '', unit: m.unit ?? '' }
         bump(meds, `${norm(v.name)}|${norm(v.dose)}|${norm(v.unit)}`, v)
+        addField('med.dose', m.dose)
+        addField('med.unit', m.unit)
       }
     } else if (row.type === 'water') {
       const k = (row.data as WaterData).kind?.trim()
@@ -56,7 +86,9 @@ async function load(): Promise<Suggestions> {
     }
   }
   const sorted = <T,>(m: Map<string, { v: T; n: number }>) => [...m.values()].sort((a, b) => b.n - a.n).map((x) => x.v)
-  return { foods: sorted(foods), meds: sorted(meds), liquids: sorted(liquids) }
+  const outFields: Record<string, string[]> = {}
+  for (const [k, m] of fields) outFields[k] = [...m.values()].sort((a, b) => b.n - a.n).map((x) => x.v)
+  return { foods: sorted(foods), meds: sorted(meds), liquids: sorted(liquids), fields: outFields }
 }
 
 /** Last loaded value: forms start with it, so the chips are there on the first paint. */

@@ -217,26 +217,45 @@ export function Pet({ hidden, water }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  /** Rubbing her belly: hearts keep coming until the finger lifts (no timeout). */
+  /**
+   * Petting: hold a finger on her (any time she is around) and she rolls over,
+   * hearts keep coming and nothing stops until the finger lifts. A quick tap
+   * is still just a tap (poke). While she is already asking for a belly rub the
+   * rub starts at once.
+   */
   const rubbing = useRef(false)
-  const startRub = (e: React.PointerEvent) => {
-    if (s.current.mood !== 'tummy' && s.current.mood !== 'rub') return
+  const holdTimer = useRef(0)
+  const justRubbed = useRef(false)
+  const beginRub = (el: HTMLElement | null, id: number) => {
     rubbing.current = true
     window.clearTimeout(timer.current)
     window.clearTimeout(sayTimer.current)
+    window.clearTimeout(holdTimer.current)
     setSpeech(null)
     setMood('rub')
-    try { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId) } catch { /* ignore */ }
+    try { el?.setPointerCapture(id) } catch { /* ignore */ }
+  }
+  const startRub = (e: React.PointerEvent) => {
+    const m = s.current.mood
+    if (m === 'away' || m === 'leave' || sulking.current) return
+    const el = e.currentTarget as HTMLElement
+    if (m === 'tummy' || m === 'rub') { beginRub(el, e.pointerId); return }
+    window.clearTimeout(holdTimer.current)
+    holdTimer.current = window.setTimeout(() => beginRub(el, e.pointerId), 260)
   }
   const stopRub = () => {
+    window.clearTimeout(holdTimer.current)
     if (!rubbing.current) return
     rubbing.current = false
+    justRubbed.current = true
+    window.setTimeout(() => { justRubbed.current = false }, 350)
     setMood('happy')
     say('rascar')
     schedule(next, 3200)
   }
 
   const poke = () => {
+    if (justRubbed.current || rubbing.current) return
     if (s.current.mood === 'tummy' || s.current.mood === 'rub') return
     if (sulking.current || s.current.mood === 'away' || s.current.mood === 'leave') return
     const now = Date.now()
@@ -321,7 +340,8 @@ export function Pet({ hidden, water }: Props) {
       <div ref={track} className={'pet-track' + (hidden ? ' hidden' : '')}>
         <div ref={petRef} className={`pet mood-${mood}`}
           style={{ left: `${x * 100}%`, transitionDuration: `${moveMs}ms` }}
-          onClick={poke} onPointerDown={startRub} onPointerUp={stopRub} onPointerCancel={stopRub} role="button" aria-label="Pipa">
+          onClick={poke} onPointerDown={startRub} onPointerUp={stopRub} onPointerCancel={stopRub}
+          onContextMenu={(e) => e.preventDefault()} role="button" aria-label="Pipa">
           <div className="pet-flip" style={{ transform: `scaleX(${facing})` }}>
             <PoodleSvg />
             {mood === 'play' && <span className="pet-ball" />}
@@ -334,7 +354,7 @@ export function Pet({ hidden, water }: Props) {
           {mood === 'howl' && <span className="pet-notes"><i>♪</i><i>♫</i><i>♪</i></span>}
           </div>
           {mood === 'sleep' && <span className="pet-z"><i>z</i><i>z</i><i>Z</i></span>}
-          {(mood === 'happy' || mood === 'rub') && <span className="pet-hearts"><i>♥</i><i>♥</i><i>♥</i></span>}
+          {(mood === 'happy' || mood === 'rub') && <span className="pet-hearts"><i>♥</i><i>♥</i><i>♥</i><i>♥</i><i>♥</i></span>}
         </div>
       </div>
       {/* Speech lives in its own layer above the button (Pipa walks behind it). */}

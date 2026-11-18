@@ -86,3 +86,8 @@ export const CameraIcon = (p: P) => (
 export const SparkleIcon = (p: P) => (
   <Svg {...p}><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8zM19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z" /></Svg>
 )
+export const PencilIcon = (p: P) => <Svg {...p}><path d="M4 20l1-4L16.5 4.5a2 2 0 0 1 3 3L8 19z M14.5 6.5l3 3" /></Svg>
+export const TimelineIcon = (p: P) => (
+  <Svg {...p}><path d="M6 4v16" /><circle cx="6" cy="7" r="1.6" /><circle cx="6" cy="14" r="1.6" /><path d="M11 7h9M11 14h9M11 19h6" /></Svg>
+)
+export const ChevronDown = (p: P) => <Svg {...p}><path d="M6 9l6 6 6-6" /></Svg>

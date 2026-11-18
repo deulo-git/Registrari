@@ -4,10 +4,10 @@ import { useI18n, type Lang } from '../lib/i18n'
 import { usePin } from '../lib/pin'
 import { getStoredPin, setPin, storePin } from '../lib/api'
 import type { Config, MedicationPreset } from '../lib/types'
-import { CloseIcon, LockIcon, PlusIcon } from '../components/Icons'
+import { ChevronLeft, CloseIcon, LockIcon, PlusIcon } from '../components/Icons'
 import { toast } from '../components/Toast'
 
-export function Settings() {
+export function Settings({ onBack }: { onBack: () => void }) {
   const { t, lang, setLang, symptomLabel } = useI18n()
   const { config, updateConfig } = useConfig()
   const { withPin } = usePin()
@@ -43,7 +43,11 @@ export function Settings() {
 
   return (
     <div className="screen settings">
-      <div className="screen-head"><h1>{t('settings')}</h1></div>
+      <div className="screen-head">
+        <button type="button" className="icon-btn" onClick={onBack} aria-label={t('back')}><ChevronLeft size={24} /></button>
+        <h1>{t('settings')}</h1>
+        <span className="icon-btn" aria-hidden="true" />
+      </div>
 
       <section className="card">
         <div className="field">

@@ -6,7 +6,8 @@ import { ENTRY_TYPES, GAS_LABELS, TYPE_COLOR, isPlainWater, type EntryType, symp
 import { fmtMl } from '../lib/format'
 import { AddButton } from '../components/AddButton'
 import { Pet, callPet } from '../components/Pet'
-import { ChevronLeft, ChevronRight } from '../components/Icons'
+import { ChevronLeft, ChevronRight, TypeIcon } from '../components/Icons'
+import { fetchLastBowel, onDataChange } from '../lib/api'
 
 interface Props {
   /** False while another tab is shown (the screen stays mounted so Pipa carries on). */
@@ -22,6 +23,26 @@ interface Props {
 const SWIPE = 45
 /** How long the old date takes to slide out before the new one slides in. */
 const OUT_MS = 170
+
+/** Time since the last bowel movement ("2 d 5 h"), refreshed every minute and after any save. */
+function useBowelSince() {
+  const [last, setLast] = useState<string | null | undefined>(undefined)
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    let alive = true
+    const load = () => fetchLastBowel().then((v) => { if (alive) setLast(v) }).catch(() => {})
+    load()
+    const off = onDataChange(load)
+    const tick = window.setInterval(() => { setNow(Date.now()); load() }, 60_000)
+    const onVis = () => { if (document.visibilityState === 'visible') { setNow(Date.now()); load() } }
+    document.addEventListener('visibilitychange', onVis)
+    return () => { alive = false; off(); window.clearInterval(tick); document.removeEventListener('visibilitychange', onVis) }
+  }, [])
+  if (last === undefined) return undefined
+  if (last === null) return null
+  const mins = Math.max(0, Math.floor((now - new Date(last).getTime()) / 60000))
+  return { days: Math.floor(mins / 1440), hours: Math.floor((mins % 1440) / 60) }
+}
 
 /**
  * Today screen, exactly the size of the viewport (no scrolling either way):
@@ -44,6 +65,7 @@ export function Today({ active, day, setDay, onAdd, onOpenCalendar }: Props) {
   const from = useMemo(() => startOfDay(day), [day])
   const to = useMemo(() => addDays(from, 1), [from])
   const { entries } = useEntries(from, to)
+  const since = useBowelSince()
 
   const isToday = sameDay(day, new Date())
   const isYesterday = sameDay(day, addDays(new Date(), -1))
@@ -164,6 +186,15 @@ export function Today({ active, day, setDay, onAdd, onOpenCalendar }: Props) {
             </li>
           ))}
       </ul>
+
+      {since !== undefined && (
+        <div className={'bowel-since' + (since && since.days >= 2 ? ' warn' : '')} style={{ '--c': TYPE_COLOR.bowel } as React.CSSProperties}>
+          <TypeIcon type="bowel" size={16} />
+          {since === null ? t('bowelNone') : (
+            <span>{t('bowelSince')} <b>{since.days > 0 ? `${since.days} ${t('dayAbbr')} ` : ''}{since.days > 0 || since.hours > 0 ? `${since.hours} ${t('hourAbbr')}` : t('bowelLess')}</b></span>
+          )}
+        </div>
+      )}
 
       <section className="hero" onClick={(e) => {
         if (!(e.target as HTMLElement).closest('.add-hub, .pet, .poop')) callPet()

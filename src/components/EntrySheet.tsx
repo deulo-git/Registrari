@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
-  APPOINTMENT_KINDS, DOC_KINDS, GAS_LABELS, LIQUID_KINDS, MEAL_KINDS, SYMPTOM_GUIDE, TYPE_COLOR, mealTotals, symptomList,
+  APPOINTMENT_KINDS, CONSULT_SUBS, DOC_KINDS, GAS_LABELS, LEGACY_TEST_KINDS, TEST_SUBS, apptGroup, LIQUID_KINDS, MEAL_KINDS, SYMPTOM_GUIDE, TYPE_COLOR, mealTotals, symptomList,
   type AppointmentData, type BowelData, type DataByType, type DocumentData, type Entry, type EntryType, type FoodItem,
   type GasData, type MealData, type MealKind, type MedicationData, type StoredFile, type SymptomData, type SymptomItem,
   type WaterData,
@@ -9,8 +9,9 @@ import { useI18n, type TKey } from '../lib/i18n'
 import { useConfig } from '../lib/data'
 import { usePin } from '../lib/pin'
 import { deleteEntry, estimateNutrition, fileUrl, saveEntry, supabase, uploadFile } from '../lib/api'
-import { apptLabel, fmtDate, fmtMl, fromLocalInput, toLocalInput } from '../lib/format'
+import { apptLabel, docKindLabel, fmtDate, fmtMl, fromLocalInput, toLocalInput } from '../lib/format'
 import { matching, useSuggestions } from '../lib/suggestions'
+import { SuggestInput, KindPicker } from './SuggestInput'
 import { CameraIcon, CloseIcon, FileIcon, PlusIcon, TrashIcon, TypeIcon } from './Icons'
 import { BristolIcon } from './Bristol'
 import { toast } from './Toast'
@@ -45,6 +46,12 @@ function defaults(type: EntryType, when: Date, glassMl: number): DataByType[Entr
     case 'appointment': return { kind: 'consultation' } satisfies AppointmentData
     case 'document': return { kind: 'result', title: '', files: [] } satisfies DocumentData
   }
+}
+
+/** Old appointments ("Colonoscòpia", "Analítica"...) become a test with that sub-type. */
+function normaliseAppt(d: AppointmentData): AppointmentData {
+  const sub = LEGACY_TEST_KINDS[d.kind]
+  return sub ? { ...d, kind: 'test', sub: d.sub ?? sub } : d
 }
 
 const QUICK_TIMES = ['08:00', '10:30', '13:30', '17:00', '20:30', '23:00']
@@ -88,7 +95,9 @@ export function EntrySheet({ type, entry, defaultDate, onClose }: Props) {
     entry
       ? (type === 'symptom'
         ? { ...structuredClone(entry.data as SymptomData), symptoms: symptomList(entry.data as SymptomData), category: undefined, intensity: undefined }
-        : structuredClone(entry.data))
+        : type === 'appointment'
+          ? normaliseAppt(structuredClone(entry.data as AppointmentData))
+          : structuredClone(entry.data))
       : defaults(type, initialWhen, config.glassMl))
   const [pendingFiles, setPendingFiles] = useState<File[]>([])
   const [busy, setBusy] = useState(false)
@@ -195,12 +204,12 @@ export function EntrySheet({ type, entry, defaultDate, onClose }: Props) {
           )}
 
           {type !== 'water' && (
-            <label className="field">
+            <div className="field">
               <span>{t('notes')}</span>
-              <textarea rows={2} placeholder={t('notesPlaceholder')}
+              <SuggestInput multiline rows={2} field={`notes.${type}`} placeholder={t('notesPlaceholder')}
                 value={(data as { notes?: string }).notes ?? ''}
-                onChange={(e) => setData({ ...data, notes: e.target.value } as DataByType[EntryType])} />
-            </label>
+                onChange={(v) => setData({ ...data, notes: v } as DataByType[EntryType])} />
+            </div>
           )}
         </div>
 
@@ -288,8 +297,8 @@ function WaterForm({ data, set, glassMl }: { data: WaterData; set: SetData; glas
               </button>
             ))}
           </div>
-          <input value={custom} placeholder={t('otherLiquid')}
-            onChange={(e) => { setCustom(e.target.value); set({ ...data, kind: e.target.value.trim() || LIQUID_KINDS[1] }) }} />
+          <SuggestInput value={custom} field="liquid" extra={sugg.liquids} placeholder={t('otherLiquid')}
+            onChange={(v) => { setCustom(v); set({ ...data, kind: v.trim() || LIQUID_KINDS[1] }) }} />
         </div>
       )}
     </>
@@ -630,10 +639,10 @@ function MedicationForm({ data, set }: { data: MedicationData; set: SetData }) {
         </div>
       )}
       <div className="row">
-        <label className="field grow"><span>{t('dose')}</span>
-          <input inputMode="decimal" value={data.dose ?? ''} onChange={(e) => set({ ...data, dose: e.target.value })} /></label>
-        <label className="field grow"><span>{t('unit')}</span>
-          <input value={data.unit ?? ''} placeholder="mg, ml, comp." onChange={(e) => set({ ...data, unit: e.target.value })} /></label>
+        <div className="field grow"><span>{t('dose')}</span>
+          <SuggestInput inputMode="decimal" field="med.dose" value={data.dose ?? ''} onChange={(v) => set({ ...data, dose: v })} /></div>
+        <div className="field grow"><span>{t('unit')}</span>
+          <SuggestInput field="med.unit" value={data.unit ?? ''} placeholder="mg, ml, comp." onChange={(v) => set({ ...data, unit: v })} /></div>
       </div>
     </>
   )
@@ -655,12 +664,14 @@ function DocumentForm({ data, set, pending, setPending }: {
   }
   return (
     <>
-      <Chips label={t('docKind')} value={data.kind} onChange={(v) => set({ ...data, kind: v })}
-        options={DOC_KINDS.map((k) => ({ value: k, label: t(`doc_${k}` as TKey) }))} />
-      <label className="field">
+      <KindPicker label={t('docKind')} field="doc.kind" fallback="result" value={data.kind}
+        extraReserved={[...DOC_KINDS]}
+        builtins={DOC_KINDS.filter((k) => k !== 'other' || data.kind === 'other').map((k) => ({ value: k, label: t(`doc_${k}` as TKey) }))}
+        onChange={(v) => set({ ...data, kind: v })} />
+      <div className="field">
         <span>{t('title')}</span>
-        <input value={data.title} onChange={(e) => set({ ...data, title: e.target.value })} />
-      </label>
+        <SuggestInput field="doc.title" value={data.title} onChange={(v) => set({ ...data, title: v })} />
+      </div>
       <AppointmentLink data={data} set={set} />
       <div className="field">
         <span>{t('files')}</span>
@@ -705,6 +716,7 @@ function DocumentForm({ data, set, pending, setPending }: {
 
 function AppointmentForm({ data, set, entryId }: { data: AppointmentData; set: SetData; entryId?: string }) {
   const { t, locale } = useI18n()
+  const group = apptGroup(data.kind)
   const [docs, setDocs] = useState<Entry[] | null>(null)
   useEffect(() => {
     if (!entryId) return
@@ -719,17 +731,27 @@ function AppointmentForm({ data, set, entryId }: { data: AppointmentData; set: S
   }
   return (
     <>
-      <Chips label={t('apptKind')} value={data.kind} onChange={(v) => set({ ...data, kind: v })}
+      <Chips label={t('apptKind')} value={apptGroup(data.kind)}
+        onChange={(v) => set({ ...data, kind: v, sub: v === apptGroup(data.kind) ? data.sub : undefined })}
         options={APPOINTMENT_KINDS.map((k) => ({ value: k, label: t(`appt_${k}` as TKey) }))} />
-      <label className="field">
+      {(group === 'test' || group === 'consultation') && (
+        <KindPicker key={group} label={t(group === 'test' ? 'apptSubTest' : 'apptSubConsult')}
+          field={`appt.sub.${group}`} fallback="" value={data.sub}
+          extraReserved={[...TEST_SUBS, ...CONSULT_SUBS]}
+          builtins={(group === 'test' ? TEST_SUBS : CONSULT_SUBS).map((k) => ({
+            value: k, label: t(`${group === 'test' ? 'test' : 'consult'}_${k}` as TKey),
+          }))}
+          onChange={(v) => set({ ...data, sub: v || undefined })} />
+      )}
+      <div className="field">
         <span>{t('title')} ({t('optional')})</span>
-        <input value={data.title ?? ''} placeholder={t('apptTitleHint')} onChange={(e) => set({ ...data, title: e.target.value })} />
-      </label>
+        <SuggestInput field="appt.title" value={data.title ?? ''} placeholder={t('apptTitleHint')} onChange={(v) => set({ ...data, title: v })} />
+      </div>
       <div className="row">
-        <label className="field grow"><span>{t('place')}</span>
-          <input value={data.place ?? ''} onChange={(e) => set({ ...data, place: e.target.value })} /></label>
-        <label className="field grow"><span>{t('doctor')}</span>
-          <input value={data.doctor ?? ''} onChange={(e) => set({ ...data, doctor: e.target.value })} /></label>
+        <div className="field grow"><span>{t('place')}</span>
+          <SuggestInput field="appt.place" value={data.place ?? ''} onChange={(v) => set({ ...data, place: v })} /></div>
+        <div className="field grow"><span>{t('doctor')}</span>
+          <SuggestInput field="appt.doctor" value={data.doctor ?? ''} onChange={(v) => set({ ...data, doctor: v })} /></div>
       </div>
       {entryId && (
         <div className="field">
@@ -741,7 +763,7 @@ function AppointmentForm({ data, set, entryId }: { data: AppointmentData; set: S
                 return (
                   <li key={d.id} className="linked-doc">
                     <FileIcon size={18} />
-                    <span className="grow">{dd.title || t(`doc_${dd.kind}` as TKey)} · {fmtDate(new Date(d.occurred_at), locale, { day: 'numeric', month: 'short' })}</span>
+                    <span className="grow">{dd.title || docKindLabel(dd.kind, t)} · {fmtDate(new Date(d.occurred_at), locale, { day: 'numeric', month: 'short' })}</span>
                     {dd.files?.map((f) => (
                       <button key={f.path} type="button" className="link-btn" onClick={() => openFile(f)}>{t('open')}</button>
                     ))}
