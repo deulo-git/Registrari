@@ -28,9 +28,9 @@
   },
 
   "enfadar": {
-    "despresDeTocs": 5,
+    "despresDeTocs": 9,
     "finestraSegons": 20,
-    "probabilitat": 0.1
+    "probabilitat": 0.03
   },
 
   "carrega": {

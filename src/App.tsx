@@ -8,19 +8,23 @@ import { Today } from './screens/Today'
 import { Calendar } from './screens/Calendar'
 import { Documents } from './screens/Documents'
 import { Settings } from './screens/Settings'
+import { Appointments } from './screens/Appointments'
 import { EntrySheet } from './components/EntrySheet'
 import { ToastHost } from './components/Toast'
 import { ConfirmHost } from './components/Confirm'
 import { Splash } from './components/Splash'
 import { onDataChange } from './lib/api'
 import { preloadSuggestions } from './lib/suggestions'
-import { CalendarIcon, FolderIcon, HomeIcon, SettingsIcon } from './components/Icons'
+import { FolderIcon, HomeIcon, TimelineIcon, TypeIcon } from './components/Icons'
 
-type Tab = 'today' | 'calendar' | 'documents' | 'settings'
+type Tab = 'today' | 'calendar' | 'documents' | 'appointments' | 'settings'
 
 function Shell() {
   const { t } = useI18n()
   const [tab, setTab] = useState<Tab>('today')
+  /** Settings is no longer a tab: it opens from the gear and goes back to where it came from. */
+  const [from, setFrom] = useState<Tab>('today')
+  const openSettings = () => { setFrom(tab); setTab('settings') }
   const [day, setDay] = useState(() => startOfDay(new Date()))
   const [sheet, setSheet] = useState<{ type: EntryType; entry?: Entry; date: Date } | null>(null)
 
@@ -35,32 +39,29 @@ function Shell() {
 
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
     { id: 'today', label: t('today'), icon: <HomeIcon size={22} /> },
-    { id: 'calendar', label: t('calendar'), icon: <CalendarIcon size={22} /> },
+    { id: 'calendar', label: t('timeline'), icon: <TimelineIcon size={22} /> },
     { id: 'documents', label: t('documents'), icon: <FolderIcon size={22} /> },
-    { id: 'settings', label: t('settings'), icon: <SettingsIcon size={22} /> },
+    { id: 'appointments', label: t('appointments'), icon: <TypeIcon type="appointment" size={22} /> },
   ]
 
   return (
     <div className={'app' + (tab === 'today' ? ' on-today' : '')}>
-      <header className="topbar">
-        <span className="brand"><span className="brand-mark" />{t('appName')}</span>
-      </header>
-
       <main>
         <div className="tab-today" hidden={tab !== 'today'}>
           <Today active={tab === 'today'} day={day} setDay={setDay} onAdd={(ty) => add(ty)}
             onOpenCalendar={(d) => { setDay(startOfDay(d)); setTab('calendar') }} />
         </div>
         {tab === 'calendar' && (
-          <Calendar initialDay={day} onEdit={edit} onOpenDay={(d) => { setDay(startOfDay(d)); setTab('today') }} />
+          <Calendar initialDay={day} onEdit={edit} onSettings={openSettings} onOpenDay={(d) => { setDay(startOfDay(d)); setTab('today') }} />
         )}
-        {tab === 'documents' && <Documents onAdd={() => add('document', startOfDay(new Date()))} onEdit={edit} />}
-        {tab === 'settings' && <Settings />}
+        {tab === 'documents' && <Documents onAdd={() => add('document', startOfDay(new Date()))} onEdit={edit} onSettings={openSettings} />}
+        {tab === 'appointments' && <Appointments onAdd={() => add('appointment', startOfDay(new Date()))} onEdit={edit} onSettings={openSettings} />}
+        {tab === 'settings' && <Settings onBack={() => setTab(from)} />}
       </main>
 
       <nav className="tabbar">
         {tabs.map((x) => (
-          <button key={x.id} type="button" className={tab === x.id ? 'on' : ''} onClick={() => {
+          <button key={x.id} type="button" className={tab === x.id ? 'on' : ''} aria-current={tab === x.id ? 'page' : undefined} onClick={() => {
             if (x.id === 'today' && tab === 'today') setDay(startOfDay(new Date()))
             setTab(x.id)
           }}>

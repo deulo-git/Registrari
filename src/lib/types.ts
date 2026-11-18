@@ -91,10 +91,11 @@ export const DOC_COLOR: Record<string, string> = {
   report: '#7c3aed',
   other: '#475569',
 }
+/** Built-in kinds ('other' only survives on old entries); anything else is a custom kind typed by the user ("Nou"). */
 export const DOC_KINDS = ['prescription', 'result', 'analysis', 'report', 'other'] as const
 export type DocKind = (typeof DOC_KINDS)[number]
 export interface DocumentData {
-  kind: DocKind
+  kind: string
   title: string
   files: StoredFile[]
   notes?: string
@@ -103,12 +104,21 @@ export interface DocumentData {
   appointmentLabel?: string
 }
 
-export const APPOINTMENT_KINDS = [
-  'consultation', 'colonoscopy', 'gastroscopy', 'analysis', 'imaging', 'emergency', 'other',
-] as const
+/** Groups of appointment. A "test" (prova) is specified with `sub` (MRI, colonoscopy, blood test...). */
+export const APPOINTMENT_KINDS = ['consultation', 'test', 'emergency', 'other'] as const
+/** Kinds saved before the "test" group existed: they still read fine and are folded into it when edited. */
+export const LEGACY_TEST_KINDS: Record<string, string> = {
+  colonoscopy: 'colonoscopy', gastroscopy: 'gastroscopy', analysis: 'blood_test', imaging: 'ultrasound',
+}
+export const TEST_SUBS = ['mri', 'colonoscopy', 'gastroscopy', 'blood_test', 'ultrasound', 'ct', 'xray'] as const
+export const CONSULT_SUBS = ['primary', 'digestive', 'oncology', 'surgery', 'nutrition'] as const
 export type AppointmentKind = (typeof APPOINTMENT_KINDS)[number]
+export const apptGroup = (kind: string): AppointmentKind =>
+  kind in LEGACY_TEST_KINDS ? 'test' : (APPOINTMENT_KINDS as readonly string[]).includes(kind) ? (kind as AppointmentKind) : 'other'
 export interface AppointmentData {
-  kind: AppointmentKind
+  kind: AppointmentKind | string
+  /** Specific type inside the group: a test name or a speciality (built-in key or free text). */
+  sub?: string
   /** Free text for "other" or to be more precise (e.g. "Ecografia abdominal"). */
   title?: string
   place?: string

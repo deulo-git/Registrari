@@ -72,6 +72,14 @@ export async function fetchEntries(from: Date, to: Date, types?: EntryType[]): P
   return out
 }
 
+/** When the last bowel movement happened (null if none yet). */
+export async function fetchLastBowel(): Promise<string | null> {
+  const { data, error } = await supabase.from('entries').select('occurred_at').eq('type', 'bowel')
+    .lte('occurred_at', new Date().toISOString()).order('occurred_at', { ascending: false }).limit(1)
+  if (error) throw new ApiError('network')
+  return (data as { occurred_at: string }[])[0]?.occurred_at ?? null
+}
+
 export async function saveEntry(pin: string, e: { id?: string; type: EntryType; occurred_at: string; data: unknown }) {
   const r = await rpc<{ id: string }>('save_entry', {
     p_pin: pin, p_id: e.id ?? null, p_type: e.type, p_occurred_at: e.occurred_at, p_data: e.data,

@@ -1,18 +1,18 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useEntries } from '../lib/data'
-import { useI18n, type TKey } from '../lib/i18n'
-import { fmtDate } from '../lib/format'
-import { fileUrl } from '../lib/api'
+import { useI18n } from '../lib/i18n'
+import { docKindLabel, fmtDate } from '../lib/format'
 import { DOC_COLOR, type DocumentData, type Entry } from '../lib/types'
-import { FileIcon, PlusIcon } from '../components/Icons'
-import { toast } from '../components/Toast'
+import { FileIcon, PlusIcon, SettingsIcon } from '../components/Icons'
+import { DocViewer } from '../components/DocViewer'
 
-export function Documents({ onAdd, onEdit }: { onAdd: () => void; onEdit: (e: Entry) => void }) {
+export function Documents({ onAdd, onEdit, onSettings }: { onAdd: () => void; onEdit: (e: Entry) => void; onSettings: () => void }) {
   const { t, locale } = useI18n()
   const from = useMemo(() => new Date(2000, 0, 1), [])
   const to = useMemo(() => new Date(2100, 0, 1), [])
   const { entries, loading } = useEntries(from, to, ['document'])
   const [mode, setMode] = useState<'all' | 'day' | 'month' | 'year'>('all')
+  const [viewId, setViewId] = useState<string | null>(null)
   const today = new Date()
   const pad = (n: number) => String(n).padStart(2, '0')
   const [val, setVal] = useState({
@@ -21,27 +21,27 @@ export function Documents({ onAdd, onEdit }: { onAdd: () => void; onEdit: (e: En
     year: String(today.getFullYear()),
   })
   // Chronological (oldest first), narrowed to the chosen day / month / year.
-  const docs = [...entries]
+  const docs = useMemo(() => [...entries]
     .sort((a, b) => new Date(a.occurred_at).getTime() - new Date(b.occurred_at).getTime())
     .filter((e) => {
       if (mode === 'all') return true
       const d = new Date(e.occurred_at)
       const k = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
       return mode === 'day' ? k === val.day : mode === 'month' ? k.startsWith(val.month) : k.startsWith(val.year)
-    })
+    }), [entries, mode, val])
 
-  const open = async (path: string) => {
-    // Open the tab synchronously (iOS blocks popups opened after an await).
-    const w = window.open('', '_blank')
-    try { const u = await fileUrl(path); if (w) w.location.href = u; else window.location.href = u }
-    catch { w?.close(); toast(t('errorGeneric'), 'error') }
-  }
+  const viewIndex = viewId ? docs.findIndex((e) => e.id === viewId) : -1
+  // The viewed document was deleted (or filtered out): leave the viewer.
+  useEffect(() => { if (viewId && !loading && viewIndex < 0) setViewId(null) }, [viewId, loading, viewIndex])
 
   return (
     <div className="screen documents">
       <div className="screen-head">
         <h1>{t('documents')}</h1>
-        <button type="button" className="btn primary small" onClick={onAdd}><PlusIcon size={18} /> {t('add')}</button>
+        <div className="head-actions">
+          <button type="button" className="btn primary small" onClick={onAdd}><PlusIcon size={18} /> {t('add')}</button>
+          <button type="button" className="icon-btn" onClick={onSettings} aria-label={t('settings')}><SettingsIcon size={22} /></button>
+        </div>
       </div>
       <div className="doc-filter">
         <div className="filter-chips">
@@ -62,26 +62,22 @@ export function Documents({ onAdd, onEdit }: { onAdd: () => void; onEdit: (e: En
           const d = e.data as DocumentData
           return (
             <li key={e.id} className="doc-card" style={{ '--c': DOC_COLOR[d.kind] ?? DOC_COLOR.other } as React.CSSProperties}>
-              <button type="button" className="doc-main" onClick={() => onEdit(e)}>
-                <span className="doc-kind">{t(`doc_${d.kind}` as TKey)}</span>
+              <button type="button" className="doc-main" onClick={() => setViewId(e.id)}>
+                <span className="doc-kind">{docKindLabel(d.kind, t)}</span>
                 <strong>{d.title || '—'}</strong>
                 <small>{fmtDate(new Date(e.occurred_at), locale)}</small>
                 {d.appointmentLabel && <span className="doc-appt">{t('linkedAppt')}: {d.appointmentLabel}</span>}
-                {d.notes && <p>{d.notes}</p>}
+                {d.files?.length > 0 && <span className="doc-count"><FileIcon size={14} /> {d.files.length}</span>}
               </button>
-              {d.files?.length > 0 && (
-                <div className="doc-files">
-                  {d.files.map((f) => (
-                    <button key={f.path} type="button" className="file-pill" onClick={() => open(f.path)}>
-                      <FileIcon size={15} /> {f.name}
-                    </button>
-                  ))}
-                </div>
-              )}
             </li>
           )
         })}
       </ul>
+
+      {viewId && viewIndex >= 0 && (
+        <DocViewer docs={docs} index={viewIndex} setIndex={(i) => setViewId(docs[i]?.id ?? null)}
+          onClose={() => setViewId(null)} onEdit={onEdit} />
+      )}
     </div>
   )
 }
