@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useEntries } from '../lib/data'
+import { useAuth } from '../lib/auth'
 import { useI18n, type TKey } from '../lib/i18n'
 import { addDays, cap, dayKey, fmtDate, parseDayKey, sameDay, startOfDay } from '../lib/format'
 import { ENTRY_TYPES, TYPE_COLOR, type Entry, type EntryType } from '../lib/types'
@@ -46,6 +47,7 @@ export function Calendar({ initialDay, onEdit, onOpenDay, onSettings }: {
   initialDay: Date; onEdit: (e: Entry) => void; onOpenDay: (d: Date) => void; onSettings: () => void
 }) {
   const { t, locale } = useI18n()
+  const { can } = useAuth()
   const [month, setMonth] = useState(() => { const d = startOfDay(initialDay); d.setDate(1); return d })
   const [selected, setSelected] = useState(() => startOfDay(initialDay))
   const [filter, setFilterState] = useState<EntryType[]>(readFilter)
@@ -138,7 +140,7 @@ export function Calendar({ initialDay, onEdit, onOpenDay, onSettings }: {
         <>
           <div className="cal-day-head">
             <strong>{cap(fmtDate(selected, locale, { weekday: 'long', day: 'numeric', month: 'long' }))}</strong>
-            <button type="button" className="link-btn" onClick={() => onOpenDay(selected)}>{t('add')} +</button>
+            {can.write && <button type="button" className="link-btn" onClick={() => onOpenDay(selected)}>{t('add')} +</button>}
           </div>
           <div className="cal-list">
             {loading && !selEntries.length ? null : <Timeline entries={selEntries} onSelect={onEdit} />}

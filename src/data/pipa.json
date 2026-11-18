@@ -10,7 +10,8 @@
     "'moviments' són els pesos de cada cosa que pot fer, de dia i de nit. Posa 0 per desactivar-ne una.",
     "'parlar.cadaSegons' = cada quant parla sola (mínim i màxim, en segons). 'fora.segons' = quant de temps pot estar fora de pantalla.",
     "'enfadar': si la toques més de 'despresDeTocs' vegades en 'finestraSegons' segons, cada toc més té 'probabilitat' (0-1) que s'enfadi i marxi corrent.",
-    "'carrega.minimSegons' = quant dura com a mínim la pantalla de càrrega."
+    "'carrega.minimSegons' = quant dura com a mínim la pantalla de càrrega.",
+    "Etiquetes de frase: \"propi\": true només la diu la mascota del primer usuari (les dades d'abans dels comptes). \"sp\": \"poodle\" només la diu el caniche. {nom} es canvia pel nom de la mascota."
   ],
 
   "parlar": {
@@ -64,7 +65,8 @@
       "esternudar": 0.6,
       "saludar amb la pota": 0.8,
       "udolar": 0.5,
-      "panxa enlaire": 0.8
+      "panxa enlaire": 0.8,
+      "especial": 1.2
     },
     "nit": {
       "dormir": 10,
@@ -73,22 +75,23 @@
       "caminar": 1,
       "fer caca": 0.1,
       "panxa enlaire": 0.5,
-      "udolar": 0.2
+      "udolar": 0.2,
+      "especial": 0.3
     }
   },
 
   "frases": {
     "tocar": [
-      { "pes": 4, "ca": "Guau!", "es": "¡Guau!" },
-      { "pes": 2, "ca": "Guau guau!", "es": "¡Guau guau!" },
+      { "pes": 4, "sp": "poodle", "ca": "Guau!", "es": "¡Guau!" },
+      { "pes": 2, "sp": "poodle", "ca": "Guau guau!", "es": "¡Guau guau!" },
       { "pes": 3, "ca": "Què guapa estàs!", "es": "¡Qué guapa estás!" },
-      { "pes": 3, "ca": "En Sergi t'estima ❤", "es": "Sergi te quiere ❤" },
+      { "pes": 3, "propi": true, "ca": "En Sergi t'estima ❤", "es": "Sergi te quiere ❤" },
       { "pes": 2, "ca": "Tinc set", "es": "Tengo sed" },
-      { "pes": 2, "ca": "Em dic Pipa!", "es": "¡Me llamo Pipa!" },
-      { "pes": 1, "ca": "Els meus cognoms són Degi Rasol", "es": "Mis apellidos son Degi Rasol" },
-      { "pes": 1, "ca": "I el puto carnet de conduir?", "es": "¿Y el puto carnet de conducir?" },
+      { "pes": 2, "ca": "Em dic {nom}!", "es": "¡Me llamo {nom}!" },
+      { "pes": 1, "propi": true, "ca": "Els meus cognoms són Degi Rasol", "es": "Mis apellidos son Degi Rasol" },
+      { "pes": 1, "propi": true, "ca": "I el puto carnet de conduir?", "es": "¿Y el puto carnet de conducir?" },
       { "pes": 2, "ca": "M'encanta estar amb tu", "es": "Me encanta estar contigo" },
-      { "pes": 2, "ca": "Rasca'm la panxa!", "es": "¡Ráscame la barriga!" },
+      { "pes": 2, "sp": "poodle", "ca": "Rasca'm la panxa!", "es": "¡Ráscame la barriga!" },
       { "pes": 2, "ca": "Ets la millor!", "es": "¡Eres la mejor!" },
       { "pes": 1, "ca": "Tomaa que gustito…", "es": "Tomaa que gustito…" }
     ],
@@ -97,22 +100,22 @@
       { "pes": 2, "ca": "Zzz… cinc minuts més…", "es": "Zzz… cinco minutos más…" },
       { "pes": 2, "ca": "Mmm… ara no…", "es": "Mmm… ahora no…" },
       { "pes": 1, "ca": "M'he posat alarma, grasies", "es": "Me puesto alarma, grácias" },
-      { "pes": 1, "ca": "Estic dormint cony", "es": "Estoy durmiendo coño" },
+      { "pes": 1, "propi": true, "ca": "Estic dormint cony", "es": "Estoy durmiendo coño" },
       { "pes": 1, "ca": "No m'empipis", "es": "No me molestes" }
     ],
     "sola": [
       { "pes": 3, "ca": "Jugues amb mi?", "es": "¿Juegas conmigo?" },
       { "pes": 2, "ca": "Anem a passejar?", "es": "¿Vamos a pasear?" },
       { "pes": 2, "ca": "Què guapa estàs!", "es": "¡Qué guapa estás!" },
-      { "pes": 2, "ca": "En Sergi t'estima ❤", "es": "Sergi te quiere ❤" },
+      { "pes": 2, "propi": true, "ca": "En Sergi t'estima ❤", "es": "Sergi te quiere ❤" },
       { "pes": 2, "ca": "Has begut aigua?", "es": "¿Has bebido agua?" },
       { "pes": 2, "ca": "Com et trobes avui?", "es": "¿Cómo te encuentras hoy?" },
       { "pes": 1, "ca": "Quina gana!", "es": "¡Qué hambre!" },
-      { "pes": 2, "ca": "Em dic Pipa", "es": "Me llamo Pipa" },
-      { "pes": 1, "ca": "Els meus cognoms són Degi Rasol", "es": "Mis apellidos son Degi Rasol" },
-      { "pes": 1, "ca": "I el carnet de conduir?", "es": "¿Y el carnet de conducir?" },
-      { "pes": 1, "ca": "Guau!", "es": "¡Guau!" },
-      { "pes": 1, "ca": "Em tiro pets, com tu!", "es": "Me tiro pedos, como tu!" }
+      { "pes": 2, "ca": "Em dic {nom}", "es": "Me llamo {nom}" },
+      { "pes": 1, "propi": true, "ca": "Els meus cognoms són Degi Rasol", "es": "Mis apellidos son Degi Rasol" },
+      { "pes": 1, "propi": true, "ca": "I el carnet de conduir?", "es": "¿Y el carnet de conducir?" },
+      { "pes": 1, "sp": "poodle", "ca": "Guau!", "es": "¡Guau!" },
+      { "pes": 1, "sp": "poodle", "ca": "Em tiro pets, com tu!", "es": "Me tiro pedos, como tu!" }
     ],
     "rascar": [
       { "pes": 2, "ca": "Jasta?", "es": "¿Ya está?" },
@@ -123,15 +126,15 @@
     "set": [
       { "pes": 3, "ca": "Tinc set…", "es": "Tengo sed…" },
       { "pes": 3, "ca": "M'estic deshidratant", "es": "Me estoy deshidratando" },
-      { "pes": 3, "ca": "Aigua siusplGUAU", "es": "AGUA PORFAVOR" },
+      { "pes": 3, "sp": "poodle", "ca": "Aigua siusplGUAU", "es": "AGUA PORFAVOR" },
       { "pes": 2, "ca": "Hi ha poca aigua!", "es": "¡Hay poca agua!" },
       { "pes": 2, "ca": "Bevem una mica d'aigua?", "es": "¿Bebemos un poco de agua?" }
     ],
     "desar": [
       { "pes": 2, "ca": "Molt bé!", "es": "¡Muy bien!" },
-      { "pes": 2, "ca": "Segueix aixi princesa", "es": "¡Sigue así princesa!" },
+      { "pes": 2, "propi": true, "ca": "Segueix aixi princesa", "es": "¡Sigue así princesa!" },
       { "pes": 2, "ca": "Bona feina!", "es": "¡Buen trabajo!" },
-      { "pes": 2, "ca": "Guau, gràcies!", "es": "¡Guau, gracias!" },
+      { "pes": 2, "sp": "poodle", "ca": "Guau, gràcies!", "es": "¡Guau, gracias!" },
       { "pes": 2, "ca": "Apuntat!", "es": "¡Apuntado!" },
       { "pes": 2, "ca": "Molt interessant, m'ho apunto", "es": "Muy interesante, me lo apunto" }
     ],
@@ -145,7 +148,7 @@
       { "pes": 5, "ca": "M'has cridat?", "es": "¿Me has llamado?" },
       { "pes": 1, "ca": "Ja soc aquí!", "es": "¡Ya estoy aquí!" },
       { "pes": 1, "ca": "Soc teva :)", "es": "Soy tuya :)" },
-      { "pes": 1, "ca": "Estava amb en Sergi", "es": "Estaba con Sergi" },
+      { "pes": 1, "propi": true, "ca": "Estava amb en Sergi", "es": "Estaba con Sergi" },
       { "pes": 1, "ca": "Espero que sigui important", "es": "Espero que sea importante" }
     ],
     "caca": [
@@ -158,12 +161,12 @@
     "benvinguda": [
       { "pes": 3, "ca": "Hola! Ja soc aquí!", "es": "¡Hola! ¡Ya estoy aquí!" },
       { "pes": 2, "ca": "Benvinguda! Com estàs avui?", "es": "¡Bienvenida! ¿Cómo estás hoy?" },
-      { "pes": 2, "ca": "Guau! Quines ganes de veure't!", "es": "¡Guau! ¡Qué ganas de verte!" },
+      { "pes": 2, "sp": "poodle", "ca": "Guau! Quines ganes de veure't!", "es": "¡Guau! ¡Qué ganas de verte!" },
       { "pes": 2, "ca": "Diga'm que has fet!", "es": "¡Dime que has hecho!" },
-      { "pes": 2, "ca": "La Teresa m'ha dit que plourà demà..", "es": "La Teresa me ha dicho que lloverá mañana" },
+      { "pes": 2, "propi": true, "ca": "La Teresa m'ha dit que plourà demà..", "es": "La Teresa me ha dicho que lloverá mañana" },
       { "pes": 2, "ca": "Un ocellet m'ha dit que beus poc", "es": "Un pajarito me ha dicho que bebes poco" },
-      { "pes": 1, "ca": "Em dic Pipa, i tu ets la millor", "es": "Me llamo Pipa, y tú eres la mejor" },
-      { "pes": 1, "ca": "M'agrada el teu cul :)", "es": "Me gusta tu culo :)" },
+      { "pes": 1, "ca": "Em dic {nom}, i tu ets la millor", "es": "Me llamo {nom}, y tú eres la mejor" },
+      { "pes": 1, "propi": true, "ca": "M'agrada el teu cul :)", "es": "Me gusta tu culo :)" },
       { "pes": 1, "ca": "Ui quina cara portes.. ja has dormit bé?", "es": "Uy que carita me llevas"},
       { "pes": 1, "ca": "Quan us casareu?", "es": "Cuando os casareis"},
       { "pes": 1, "ca": "El teu novio es mereix un massatge", "es": "Tu novio se merece un masaje"}
@@ -172,10 +175,10 @@
       { "pes": 5, "ca": "No m'empipis!", "es": "¡No me molestes!" },
       { "pes": 1, "ca": "Prou! Me'n vaig!", "es": "¡Basta! ¡Me voy!" },
       { "pes": 1, "ca": "Vinga, adeu", "es": "Venga adiós" },
-      { "pes": 1, "ca": "N'estic fins els ***", "es": "Estoy hasta los ***" },
-      { "pes": 1, "ca": "Em callo que en diré una de grossa", "es": "Me callo que la voy a liar.." },
-      { "pes": 1, "ca": "Lletja", "es": "Fea" },
-      { "pes": 1, "ca": "En sergi em tracta millor...", "es": "¡Sergi me trata mejor!" }
+      { "pes": 1, "propi": true, "ca": "N'estic fins els ***", "es": "Estoy hasta los ***" },
+      { "pes": 1, "propi": true, "ca": "Em callo que en diré una de grossa", "es": "Me callo que la voy a liar.." },
+      { "pes": 1, "propi": true, "ca": "Lletja", "es": "Fea" },
+      { "pes": 1, "propi": true, "ca": "En sergi em tracta millor...", "es": "¡Sergi me trata mejor!" }
     ],
     "cacaRecollida": [
       { "pes": 3, "ca": "Gràcies!", "es": "¡Gracias!" },

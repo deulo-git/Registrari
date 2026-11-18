@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useBackClose } from '../lib/backClose'
+import { useAuth } from '../lib/auth'
 import { useI18n } from '../lib/i18n'
 import { docKindLabel, fmtDate } from '../lib/format'
 import { fileUrl } from '../lib/api'
@@ -136,6 +137,7 @@ export function DocViewer({ docs, index, setIndex, onClose, onEdit }: {
 }) {
   const { t, locale } = useI18n()
   useBackClose(onClose)
+  const { can } = useAuth()
   const entry = docs[index]
   const d = entry?.data as DocumentData | undefined
   const [fileIdx, setFileIdx] = useState(0)
@@ -165,7 +167,7 @@ export function DocViewer({ docs, index, setIndex, onClose, onEdit }: {
           <span>{index + 1} / {docs.length}</span>
           <button type="button" className="icon-btn" disabled={index >= docs.length - 1} onClick={() => setIndex(index + 1)} aria-label={t('nextItem')}><ChevronRight /></button>
         </div>
-        <button type="button" className="icon-btn dv-edit" onClick={() => onEdit(entry)} aria-label={t('edit')}><PencilIcon size={20} /></button>
+        {can.write ? <button type="button" className="icon-btn dv-edit" onClick={() => onEdit(entry)} aria-label={t('edit')}><PencilIcon size={20} /></button> : <span />}
       </header>
 
       <div ref={bodyRef} className="dv-body" key={entry.id}>

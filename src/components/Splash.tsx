@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useConfig } from '../lib/data'
 import { useI18n } from '../lib/i18n'
-import { PIPA, phrase } from '../lib/pipa'
-import { PoodleSvg } from './Pet'
+import { PIPA, phrase, setPetContext } from '../lib/pipa'
+import { PetArt } from './PetSvgs'
+import { useAuth } from '../lib/auth'
 
 /**
  * Loading screen shown when the app opens: Pipa nodding with a welcome
@@ -12,6 +13,9 @@ import { PoodleSvg } from './Pet'
 export function Splash() {
   const { loaded } = useConfig()
   const { lang } = useI18n()
+  const { active } = useAuth()
+  const species = active?.profile.pet.species ?? 'poodle'
+  if (active) setPetContext({ pet: active.profile.pet, userName: active.profile.first_name, legacy: active.profile.legacy })
   const [text] = useState(() => phrase('benvinguda', lang))
   const [minDone, setMinDone] = useState(false)
   const [phase, setPhase] = useState<'in' | 'out' | 'gone'>('in')
@@ -35,7 +39,7 @@ export function Splash() {
     <div className={'splash' + (phase === 'out' ? ' out' : '')} aria-busy={phase === 'in'}>
       <div className="splash-inner">
         {text && <span className="splash-say">{text}</span>}
-        <div className="splash-pet mood-sit"><PoodleSvg /></div>
+        <div className="splash-pet mood-sit"><PetArt species={species} /></div>
         <strong className="splash-brand"><span className="brand-mark" />REGISTRARI</strong>
         <span className="splash-dots"><i /><i /><i /></span>
       </div>

@@ -14,7 +14,8 @@ interface Props {
   active: boolean
   day: Date
   setDay: (d: Date) => void
-  onAdd: (t: EntryType) => void
+  /** Undefined when this user may only look (limited helper). */
+  onAdd?: (t: EntryType) => void
   /** Tapping the date (not the arrows) opens the calendar on that day. */
   onOpenCalendar: (d: Date) => void
 }
@@ -200,7 +201,9 @@ export function Today({ active, day, setDay, onAdd, onOpenCalendar }: Props) {
         if (!(e.target as HTMLElement).closest('.add-hub, .pet, .poop')) callPet()
       }}>
         <Pet hidden={open || !active} water={water} />
-        <AddButton open={open} setOpen={setOpen} onPick={onAdd} waterProgress={water} />
+        {onAdd
+          ? <AddButton open={open} setOpen={setOpen} onPick={onAdd} waterProgress={water} />
+          : <p className="view-only">{t('viewOnly')}</p>}
       </section>
     </div>
   )

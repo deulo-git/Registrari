@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { I18nProvider, useI18n } from './lib/i18n'
-import { PinProvider } from './lib/pin'
+import { AuthProvider, useAuth } from './lib/auth'
+import { Onboarding, SignIn } from './screens/Auth'
 import { ConfigProvider } from './lib/data'
 import { startOfDay } from './lib/format'
 import type { Entry, EntryType } from './lib/types'
@@ -14,13 +15,14 @@ import { ToastHost } from './components/Toast'
 import { ConfirmHost } from './components/Confirm'
 import { Splash } from './components/Splash'
 import { onDataChange } from './lib/api'
-import { preloadSuggestions } from './lib/suggestions'
+import { preloadSuggestions, resetSuggestions } from './lib/suggestions'
 import { FolderIcon, HomeIcon, TimelineIcon, TypeIcon } from './components/Icons'
 
 type Tab = 'today' | 'calendar' | 'documents' | 'appointments' | 'settings'
 
 function Shell() {
   const { t } = useI18n()
+  const { can } = useAuth()
   const [tab, setTab] = useState<Tab>('today')
   /** Settings is no longer a tab: it opens from the gear and goes back to where it came from. */
   const [from, setFrom] = useState<Tab>('today')
@@ -30,6 +32,7 @@ function Shell() {
 
   // Suggestions are ready before any form opens (and again after each save).
   useEffect(() => {
+    resetSuggestions()
     preloadSuggestions()
     return onDataChange(() => window.setTimeout(preloadSuggestions, 0))
   }, [])
@@ -48,14 +51,14 @@ function Shell() {
     <div className={'app' + (tab === 'today' ? ' on-today' : '')}>
       <main>
         <div className="tab-today" hidden={tab !== 'today'}>
-          <Today active={tab === 'today'} day={day} setDay={setDay} onAdd={(ty) => add(ty)}
+          <Today active={tab === 'today'} day={day} setDay={setDay} onAdd={can.write ? (ty) => add(ty) : undefined}
             onOpenCalendar={(d) => { setDay(startOfDay(d)); setTab('calendar') }} />
         </div>
         {tab === 'calendar' && (
           <Calendar initialDay={day} onEdit={edit} onSettings={openSettings} onOpenDay={(d) => { setDay(startOfDay(d)); setTab('today') }} />
         )}
-        {tab === 'documents' && <Documents onAdd={() => add('document', startOfDay(new Date()))} onEdit={edit} onSettings={openSettings} />}
-        {tab === 'appointments' && <Appointments onAdd={() => add('appointment', startOfDay(new Date()))} onEdit={edit} onSettings={openSettings} />}
+        {tab === 'documents' && <Documents onAdd={can.write ? () => add('document', startOfDay(new Date())) : undefined} onEdit={edit} onSettings={openSettings} />}
+        {tab === 'appointments' && <Appointments onAdd={can.write ? () => add('appointment', startOfDay(new Date())) : undefined} onEdit={edit} onSettings={openSettings} />}
         {tab === 'settings' && <Settings onBack={() => setTab(from)} />}
       </main>
 
@@ -75,20 +78,27 @@ function Shell() {
           defaultDate={sheet.date} onClose={() => setSheet(null)} />
       )}
       <Splash />
-      <ToastHost />
-      <ConfirmHost />
     </div>
   )
+}
+
+function Gate() {
+  const { status, active } = useAuth()
+  if (status === 'loading') return <div className="auth-screen"><span className="splash-dots"><i /><i /><i /></span></div>
+  if (status === 'signedOut') return <SignIn />
+  if (status === 'needsProfile') return <Onboarding />
+  // Another person's data on screen = a fresh start (state, suggestions, filters).
+  return <ConfigProvider><Shell key={active?.ownerId} /></ConfigProvider>
 }
 
 export function App() {
   return (
     <I18nProvider>
-      <PinProvider>
-        <ConfigProvider>
-          <Shell />
-        </ConfigProvider>
-      </PinProvider>
+      <AuthProvider>
+        <Gate />
+        <ToastHost />
+        <ConfirmHost />
+      </AuthProvider>
     </I18nProvider>
   )
 }

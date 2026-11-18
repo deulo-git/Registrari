@@ -6,7 +6,7 @@ import { DOC_COLOR, type DocumentData, type Entry } from '../lib/types'
 import { FileIcon, PlusIcon, SettingsIcon } from '../components/Icons'
 import { DocViewer } from '../components/DocViewer'
 
-export function Documents({ onAdd, onEdit, onSettings }: { onAdd: () => void; onEdit: (e: Entry) => void; onSettings: () => void }) {
+export function Documents({ onAdd, onEdit, onSettings }: { onAdd?: () => void; onEdit: (e: Entry) => void; onSettings: () => void }) {
   const { t, locale } = useI18n()
   const from = useMemo(() => new Date(2000, 0, 1), [])
   const to = useMemo(() => new Date(2100, 0, 1), [])
@@ -39,7 +39,7 @@ export function Documents({ onAdd, onEdit, onSettings }: { onAdd: () => void; on
       <div className="screen-head">
         <h1>{t('documents')}</h1>
         <div className="head-actions">
-          <button type="button" className="btn primary small" onClick={onAdd}><PlusIcon size={18} /> {t('add')}</button>
+          {onAdd && <button type="button" className="btn primary small" onClick={onAdd}><PlusIcon size={18} /> {t('add')}</button>}
           <button type="button" className="icon-btn" onClick={onSettings} aria-label={t('settings')}><SettingsIcon size={22} /></button>
         </div>
       </div>

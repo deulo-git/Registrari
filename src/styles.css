@@ -1190,3 +1190,136 @@ button, .chip, .fchip { -webkit-tap-highlight-color: transparent; }
 @keyframes rubWave { from { transform: rotate(-70deg); } to { transform: rotate(-20deg); } }
 @keyframes rubDance { 0%, 100% { transform: translateY(0) rotate(-6deg); } 25% { transform: translateY(-12px) rotate(0); } 50% { transform: translateY(0) rotate(6deg); } 75% { transform: translateY(-12px) rotate(0); } }
 @keyframes rubBow { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(14deg) translateY(4px); } }
+
+/* ════════════════ v1.0: ten pets, each with its own walk and signature move ════════════════ */
+
+.pet-prop { position: absolute; z-index: 3; font-size: 22px; line-height: 1; pointer-events: none; left: 82%; top: 40%; }
+.p-wing { transform-box: fill-box; transform-origin: 85% 100%; animation: flap 1.6s ease-in-out infinite alternate; }
+.mood-sleep .p-wing, .mood-lie .p-wing { animation: none; }
+@keyframes flap { from { transform: rotate(-6deg); } to { transform: rotate(14deg); } }
+
+/* Walks: each species moves its own way */
+@keyframes hopWalk { 0%, 100% { transform: translateY(0) rotate(2deg); } 50% { transform: translateY(-15px) rotate(-5deg); } }
+@keyframes waddle { from { transform: rotate(-7deg); } to { transform: rotate(7deg); } }
+@keyframes lumber { from { transform: translateY(0) rotate(-2deg); } to { transform: translateY(-2px) rotate(2deg); } }
+@keyframes prowl { from { transform: translateY(4px) scaleY(.96); } to { transform: translateY(3px) scaleY(.98) rotate(1deg); } }
+.sp-rabbit.mood-walk .poodle, .sp-rabbit.mood-run .poodle,
+.sp-frog.mood-walk .poodle, .sp-frog.mood-run .poodle { animation: hopWalk .55s ease-in-out infinite; transform-box: view-box; transform-origin: 50% 95%; }
+.sp-frog.mood-walk .poodle, .sp-frog.mood-run .poodle { animation-duration: .7s; }
+.sp-penguin.mood-walk .poodle, .sp-penguin.mood-run .poodle { animation: waddle .42s ease-in-out infinite alternate; transform-box: view-box; transform-origin: 50% 95%; }
+.sp-panda.mood-walk .poodle, .sp-panda.mood-run .poodle { animation: lumber .6s ease-in-out infinite alternate; }
+.sp-cat.mood-walk .poodle { animation: prowl .5s ease-in-out infinite alternate; }
+.sp-turtle.mood-walk .poodle { animation-duration: 1s; }
+.sp-turtle.mood-walk .p-leg-fr, .sp-turtle.mood-walk .p-leg-bl, .sp-turtle.mood-walk .p-leg-fl, .sp-turtle.mood-walk .p-leg-br { animation-duration: 1s; }
+.sp-owl.mood-walk .poodle { animation: hopWalk .8s ease-in-out infinite; transform-box: view-box; transform-origin: 50% 95%; }
+.sp-fox.mood-run .poodle { animation-duration: .13s; }
+.sp-dragon.mood-walk .poodle { animation-duration: .3s; }
+
+/* Signature moves (mood "special") */
+.mood-special .p-tongue { opacity: 0; }
+/* cat: kneading + purring */
+.sp-cat.mood-special .poodle { transform: translateY(6px); animation: purr .12s linear infinite alternate; }
+.sp-cat.mood-special .p-leg-fr, .sp-cat.mood-special .p-leg-fl { animation: knead .5s ease-in-out infinite alternate; }
+.sp-cat.mood-special .p-eye-open { opacity: 0; } .sp-cat.mood-special .p-eye-closed { opacity: 1; }
+.prop-cat { left: 92%; top: 62%; animation: yarn 1.4s linear infinite; }
+@keyframes purr { from { transform: translateY(6px) rotate(-.6deg); } to { transform: translateY(6px) rotate(.6deg); } }
+@keyframes knead { from { transform: rotate(-16deg); } to { transform: rotate(14deg); } }
+@keyframes yarn { from { transform: translateX(0) rotate(0); } to { transform: translateX(10px) rotate(360deg); } }
+/* rabbit: binky (jump with a twist) */
+.sp-rabbit.mood-special .poodle { animation: binky 1s ease-in-out infinite; transform-box: view-box; transform-origin: 50% 90%; }
+.prop-rabbit { animation: bob .5s ease-in-out infinite alternate; }
+@keyframes binky { 0%, 100% { transform: translateY(0) rotate(0); } 30% { transform: translateY(-26px) rotate(-18deg); } 55% { transform: translateY(-30px) rotate(18deg); } 80% { transform: translateY(-4px) rotate(-4deg); } }
+/* penguin: belly slide */
+.sp-penguin.mood-special .poodle { animation: slide 2.4s ease-in-out infinite; transform-box: view-box; transform-origin: 50% 85%; }
+.sp-penguin.mood-special .p-leg { opacity: 0; }
+.prop-penguin { left: 96%; top: 70%; animation: bob .4s ease-in-out infinite alternate; }
+@keyframes slide { 0%, 100% { transform: translateX(0) rotate(0); } 20%, 70% { transform: translateX(22px) translateY(14px) rotate(82deg); } 85% { transform: translateX(0) rotate(0); } }
+/* fox: crouch and pounce */
+.sp-fox.mood-special .poodle { animation: pounce 1.6s ease-in-out infinite; transform-box: view-box; transform-origin: 30% 95%; }
+.sp-fox.mood-special .p-tail { animation: wag .12s linear infinite alternate; }
+.prop-fox { left: 108%; top: 76%; animation: scurry 1.6s ease-in-out infinite; }
+@keyframes pounce { 0%, 35% { transform: translateY(5px) scaleY(.9) rotate(-4deg); } 55% { transform: translateY(-30px) translateX(14px) rotate(8deg); } 75%, 100% { transform: translateY(0) rotate(0); } }
+@keyframes scurry { 0%, 40% { transform: translateX(0); } 55% { transform: translateX(-8px) scale(.9); } 100% { transform: translateX(0); } }
+/* panda: eating bamboo */
+.sp-panda.mood-special .poodle { transform: rotate(-4deg); }
+.sp-panda.mood-special .p-head { animation: chew .35s ease-in-out infinite alternate; transform-box: fill-box; transform-origin: 40% 100%; }
+.sp-panda.mood-special .p-eye-open { opacity: 0; } .sp-panda.mood-special .p-eye-closed { opacity: 1; }
+.prop-panda { left: 92%; top: 42%; font-size: 26px; transform-origin: 20% 90%; animation: bamboo .7s ease-in-out infinite alternate; }
+@keyframes chew { from { transform: translateY(0) rotate(0); } to { transform: translateY(3px) rotate(3deg); } }
+@keyframes bamboo { from { transform: rotate(-8deg); } to { transform: rotate(6deg) translateX(-3px); } }
+/* turtle: hides in its shell, then peeks out */
+.sp-turtle.mood-special .p-head { animation: shellHead 4s ease-in-out infinite; }
+.sp-turtle.mood-special .p-leg { animation: shellLeg 4s ease-in-out infinite; }
+.sp-turtle.mood-special .p-tail { animation: shellLeg 4s ease-in-out infinite; }
+.prop-turtle { left: 100%; top: 70%; animation: bob .8s ease-in-out infinite alternate; }
+@keyframes shellHead { 0%, 12% { transform: none; } 25%, 70% { transform: translateX(-30px) scale(.15); } 85%, 100% { transform: none; } }
+@keyframes shellLeg { 0%, 12% { transform: none; } 25%, 70% { transform: scaleY(.1); } 85%, 100% { transform: none; } }
+/* owl: head swivel */
+.sp-owl.mood-special .p-head { animation: owlTurn 3s ease-in-out infinite; transform-box: fill-box; transform-origin: 50% 80%; }
+.prop-owl { left: 60%; top: -14%; animation: bob 1.4s ease-in-out infinite alternate; }
+@keyframes owlTurn { 0%, 15% { transform: scaleX(1); } 30%, 55% { transform: scaleX(-1); } 75%, 100% { transform: scaleX(1); } }
+/* frog: tongue snaps at a fly */
+.sp-frog.mood-special .p-tongue { opacity: 1; transform-box: fill-box; transform-origin: 0 50%; animation: tongue 1.4s ease-in-out infinite; }
+.prop-frog { left: 118%; top: 38%; animation: fly 1.4s ease-in-out infinite; }
+@keyframes tongue { 0%, 30%, 100% { transform: scaleX(.2); } 45%, 60% { transform: scaleX(7); } }
+@keyframes fly { 0% { transform: translate(6px, -8px); } 40% { transform: translate(-4px, 0); } 55% { transform: translate(-14px, 4px) scale(.6); opacity: 1; } 56%, 70% { opacity: 0; } 100% { transform: translate(6px, -8px); opacity: 1; } }
+/* dragon: breathes fire */
+.sp-dragon.mood-special .poodle { transform: rotate(-6deg); transform-box: view-box; transform-origin: 30% 95%; }
+.sp-dragon.mood-special .p-head { animation: roar 1.3s ease-in-out infinite; transform-box: fill-box; transform-origin: 30% 90%; }
+.sp-dragon.mood-special .p-wing { animation-duration: .35s; }
+.prop-dragon { left: 100%; top: 36%; font-size: 30px; transform-origin: 0 60%; animation: fire 1.3s ease-out infinite; }
+@keyframes roar { 0%, 100% { transform: rotate(0); } 40%, 70% { transform: rotate(-10deg); } }
+@keyframes fire { 0%, 25% { transform: scale(0); opacity: 0; } 45% { transform: scale(1.1); opacity: 1; } 80% { transform: scale(1.5) translateX(8px); opacity: .6; } 100% { transform: scale(1.7); opacity: 0; } }
+/* poodle: has no signature move (special weight 0) */
+
+/* ── Accounts, onboarding, pets, helpers ── */
+.auth-screen { min-height: 100dvh; display: grid; place-items: center; padding: calc(env(safe-area-inset-top) + 16px) 16px calc(env(safe-area-inset-bottom) + 16px); background: radial-gradient(circle at 50% 0, #fff 0, #e2f6e8 60%, var(--bg) 100%); }
+.auth-card { width: 100%; max-width: 420px; background: var(--surface); border-radius: 24px; padding: 28px 22px; box-shadow: 0 0 0 1px rgba(15, 23, 42, .04), 0 20px 50px rgba(15, 23, 42, .1); display: flex; flex-direction: column; gap: 14px; text-align: center; animation: rise .3s ease both; }
+.auth-card.wide { text-align: left; max-width: 520px; }
+.auth-card h1 { font-size: 30px; letter-spacing: -.025em; }
+.auth-card p { margin: 0; }
+.auth-pets { display: flex; justify-content: center; gap: 2px; margin-bottom: 4px; }
+.auth-pet { width: 64px; height: 54px; display: block; }
+.auth-pet svg { width: 100%; height: 100%; }
+.btn.google { background: #fff; color: #1f2937; border: 1px solid #d5dbe0; min-height: 50px; gap: 10px; font-weight: 600; }
+.auth-lang { align-self: center; }
+.steps { display: flex; gap: 6px; }
+.steps i { flex: 1; height: 4px; border-radius: 4px; background: var(--line); }
+.steps i.on { background: var(--accent); }
+.auth-actions { display: flex; gap: 10px; margin-top: 4px; }
+.onboarding .auth-card { max-height: calc(100dvh - 32px); overflow-y: auto; }
+
+.pet-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+.pet-card { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 2px 6px; border-radius: 14px; background: var(--bg); border: 2px solid transparent; font-size: 11px; transition: transform .15s, border-color .15s, background .15s; }
+.pet-card.on { border-color: var(--accent); background: var(--accent-soft); transform: translateY(-2px); }
+.pet-card:active { transform: scale(.95); }
+.pet-card-art { width: 100%; max-width: 56px; display: block; }
+.pet-card-art svg { width: 100%; height: auto; display: block; }
+.pet-card.on .pet-card-art { animation: jump .9s ease-in-out infinite; }
+@media (max-width: 380px) { .pet-grid { grid-template-columns: repeat(4, 1fr); } }
+.pers-row { display: flex; flex-direction: column; gap: 2px; padding: 4px 0; }
+.pers-head { display: flex; justify-content: space-between; align-items: baseline; }
+.pers-head b { font-size: 14px; text-transform: none; letter-spacing: 0; color: var(--text); }
+.pers-ends { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); text-transform: none; letter-spacing: 0; }
+.pers-ends span { font-weight: 400; }
+input[type=range] { padding: 0; border: 0; background: none; accent-color: var(--accent); }
+.toggle.personalise { display: flex; gap: 12px; align-items: flex-start; background: var(--bg); padding: 12px; border-radius: 14px; }
+.toggle.personalise input { width: 22px; height: 22px; flex: none; margin-top: 2px; }
+.toggle.personalise span { display: flex; flex-direction: column; gap: 2px; }
+.toggle.personalise small { color: var(--muted); }
+.field.personal > .field { gap: 2px; }
+.field.personal small { text-transform: none; letter-spacing: 0; font-weight: 500; font-size: 13px; color: var(--text); }
+fieldset.plain { border: 0; padding: 0; margin: 0; min-width: 0; display: flex; flex-direction: column; gap: 14px; }
+fieldset.plain:disabled { opacity: .6; }
+fieldset.ro { border: 0; margin: 0; min-width: 0; }
+fieldset.ro:disabled { opacity: .85; }
+.level-list { display: flex; flex-direction: column; gap: 8px; }
+.level { text-align: left; display: flex; flex-direction: column; gap: 1px; padding: 10px 12px; border-radius: 12px; background: var(--bg); border: 2px solid transparent; }
+.level.on { border-color: var(--accent); background: var(--accent-soft); }
+.level small { color: var(--muted); font-size: 12.5px; }
+.share-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.share-list li { display: flex; align-items: center; gap: 8px; background: var(--bg); border-radius: 12px; padding: 8px 8px 8px 12px; }
+.share-list li div { display: flex; flex-direction: column; min-width: 0; }
+.share-list strong { overflow: hidden; text-overflow: ellipsis; }
+.share-list small { color: var(--muted); }
+.view-only { margin: auto; padding: 8px 16px; border-radius: 99px; background: var(--surface); box-shadow: var(--shadow); font-size: 14px; color: var(--muted); }

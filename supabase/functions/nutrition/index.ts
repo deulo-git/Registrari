@@ -1,11 +1,11 @@
 // Estimates nutrients for the foods of a meal with Gemini.
 //
-// Body: { pin: string, lang: 'ca' | 'es', items: { name, qty?, unit? }[] }
+// Body: { lang: 'ca' | 'es', items: { name, qty?, unit? }[] }
 // Reply: { ok: true, items: { name, qty, unit, kcal, protein, carbs, fat, fiber }[] }
-//      | { ok: false, error: 'bad_pin' | 'locked' | 'no_pin' | 'no_key' | 'bad_request' | 'ai_error' }
+//      | { ok: false, error: 'not_signed_in' | 'no_key' | 'bad_request' | 'ai_error' }
 //
-// The PIN is checked with the same RPC the app uses (wrong PINs count towards
-// the lockout), so the Gemini key can't be spent by anyone who only has the link.
+// The caller must be a signed-in user (their session token is validated against
+// Supabase Auth), so the Gemini key can't be spent by anyone who only has the link.
 // The key lives in the GEMINI_API_KEY secret, never in the app.
 
 // Free-tier models get "503 high demand" often, so try several in turn, each
@@ -37,7 +37,7 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
   if (req.method !== 'POST') return reply({ ok: false, error: 'bad_request' }, 405)
 
-  let body: { pin?: string; lang?: string; items?: InItem[] }
+  let body: { lang?: string; items?: InItem[] }
   try { body = await req.json() } catch { return reply({ ok: false, error: 'bad_request' }, 400) }
 
   const items = (body.items ?? [])
@@ -48,18 +48,14 @@ Deno.serve(async (req) => {
       qty: typeof i.qty === 'number' && i.qty > 0 ? i.qty : undefined,
       unit: i.unit === 'ml' || i.unit === 'u' ? i.unit : 'g',
     }))
-  if (!items.length || typeof body.pin !== 'string') return reply({ ok: false, error: 'bad_request' }, 400)
+  if (!items.length) return reply({ ok: false, error: 'bad_request' }, 400)
 
-  // ── PIN ──
+  // ── Signed-in user ── (the app sends the user's session token)
   const url = Deno.env.get('SUPABASE_URL')!
   const anon = Deno.env.get('SUPABASE_ANON_KEY')!
-  const pinRes = await fetch(`${url}/rest/v1/rpc/check_pin`, {
-    method: 'POST',
-    headers: { apikey: anon, Authorization: `Bearer ${anon}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ p_pin: body.pin }),
-  })
-  const pin = await pinRes.json().catch(() => null)
-  if (!pin?.ok) return reply({ ok: false, error: pin?.error ?? 'bad_pin' })
+  const auth = req.headers.get('Authorization') ?? ''
+  const who = await fetch(`${url}/auth/v1/user`, { headers: { apikey: anon, Authorization: auth } })
+  if (!who.ok) return reply({ ok: false, error: 'not_signed_in' })
 
   const key = Deno.env.get('GEMINI_API_KEY')
   if (!key) return reply({ ok: false, error: 'no_key' })
