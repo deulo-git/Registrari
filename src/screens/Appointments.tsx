@@ -5,16 +5,12 @@ import { apptLabel, cap, fmtDate, fmtTime } from '../lib/format'
 import { APPOINTMENT_KINDS, TYPE_COLOR, apptGroup, type AppointmentData, type Entry } from '../lib/types'
 import { PlusIcon, SettingsIcon, TypeIcon } from '../components/Icons'
 
-/** Soft background / ink pairs for the calendar badge; each kind of appointment gets its own. */
-const BADGES: [string, string][] = [
-  ['#ccfbf1', '#0f766e'], ['#dbeafe', '#1d4ed8'], ['#fce7f3', '#be185d'], ['#fef3c7', '#b45309'],
-  ['#ede9fe', '#6d28d9'], ['#dcfce7', '#15803d'], ['#ffe4e6', '#be123c'], ['#e0f2fe', '#0369a1'],
-]
-function badgeFor(d: AppointmentData) {
-  const key = (d.sub?.trim() || (d.title?.trim() ?? '') || d.kind).toLocaleLowerCase()
-  let h = 0
-  for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) >>> 0
-  return BADGES[h % BADGES.length]
+/** One colour per kind of appointment: background / ink of the calendar badge, and the accent. */
+const KIND_COLORS: Record<string, { bg: string; ink: string }> = {
+  emergency: { bg: '#fee2e2', ink: '#b91c1c' },
+  consultation: { bg: '#dcfce7', ink: '#15803d' },
+  test: { bg: '#dbeafe', ink: '#1d4ed8' },
+  other: { bg: '#ede9fe', ink: '#6d28d9' },
 }
 
 /** Every appointment the patient has had, newest first, grouped by year. */
@@ -54,7 +50,7 @@ export function Appointments({ onAdd, onEdit, onSettings }: { onAdd: () => void;
         <button type="button" className={'fchip' + (group === 'all' ? ' on' : '')} onClick={() => setGroup('all')}>{t('all')}</button>
         {APPOINTMENT_KINDS.map((k) => (
           <button key={k} type="button" className={'fchip' + (group === k ? ' on' : '')}
-            style={{ '--c': TYPE_COLOR.appointment } as React.CSSProperties} onClick={() => setGroup(k)}>
+            style={{ '--c': KIND_COLORS[k].ink } as React.CSSProperties} onClick={() => setGroup(k)}>
             {t(`appt_${k}` as TKey)}
           </button>
         ))}
@@ -68,18 +64,20 @@ export function Appointments({ onAdd, onEdit, onSettings }: { onAdd: () => void;
             {items.map((e) => {
               const d = e.data as AppointmentData
               const date = new Date(e.occurred_at)
+              const g = apptGroup(d.kind)
+              const col = KIND_COLORS[g]
               const future = date.getTime() > now
               const meta = [d.place?.trim(), d.doctor?.trim()].filter(Boolean).join(' · ')
               return (
                 <li key={e.id}>
-                  <button type="button" className={'appt-item' + (future ? ' future' : '')} onClick={() => onEdit(e)}>
-                    <span className="appt-date" style={{ background: badgeFor(d)[0], color: badgeFor(d)[1] }}>
+                  <button type="button" className={'appt-item' + (future ? ' future' : '')} style={{ '--k': col.ink } as React.CSSProperties} onClick={() => onEdit(e)}>
+                    <span className="appt-date" style={{ background: col.bg, color: col.ink }}>
                       <b>{date.getDate()}</b>
                       <small>{fmtDate(date, locale, { month: 'short' })}</small>
                     </span>
                     <span className="appt-text">
-                      <strong>{apptLabel(d, t)}</strong>
-                      <small>{cap(t(`appt_${apptGroup(d.kind)}` as TKey))} · {fmtTime(e.occurred_at, locale)}{meta ? ` · ${meta}` : ''}</small>
+                      <strong><span className="appt-kind" style={{ color: col.ink }}>{t(`appt_${g}` as TKey)}</span> · {apptLabel(d, t)}</strong>
+                      <small>{cap(fmtTime(e.occurred_at, locale))}{meta ? ` · ${meta}` : ''}</small>
                       {d.notes?.trim() && <em>{d.notes.trim()}</em>}
                     </span>
                     <TypeIcon type="appointment" size={18} color={TYPE_COLOR.appointment} />
