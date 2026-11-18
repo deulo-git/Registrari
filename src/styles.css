@@ -1384,3 +1384,12 @@ h2 { line-height: 1.2; }
 .auth-actions .btn { width: auto; }
 .row { flex-wrap: wrap; }
 .row > .btn { flex: none; }
+
+/* ── Viewers: the body scrolls, its blocks never shrink into each other ── */
+.dv-body > * { flex-shrink: 0; }
+.dv-summary h2 { font-size: 1.25rem; }
+.av-notes { min-height: 0; }
+.av-notes p { font-size: .9375rem; line-height: 1.45; }
+.av-facts dd { font-size: .9375rem; }
+.av-doc { min-width: 0; }
+.av-doc strong { overflow-wrap: anywhere; font-size: .9375rem; }
