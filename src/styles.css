@@ -1146,3 +1146,7 @@ button, .chip, .fchip { -webkit-tap-highlight-color: transparent; }
 .dv-light .dv-dots { position: absolute; left: 0; right: 0; bottom: calc(env(safe-area-inset-bottom) + 50px); margin: 0; z-index: 3; }
 .dv-light .dv-dots button { background: rgba(255, 255, 255, .45); }
 .dv-light .dv-dots button.on { background: #fff; }
+
+.appt-item { border-left: 4px solid var(--k, #0d9488); }
+.appt-item.future { box-shadow: 0 0 0 1.5px var(--k), var(--shadow); }
+.appt-kind { font-weight: 700; }
