@@ -20,9 +20,9 @@ export function Documents({ onAdd, onEdit, onSettings }: { onAdd: () => void; on
     month: `${today.getFullYear()}-${pad(today.getMonth() + 1)}`,
     year: String(today.getFullYear()),
   })
-  // Chronological (oldest first), narrowed to the chosen day / month / year.
+  // Newest first, narrowed to the chosen day / month / year.
   const docs = useMemo(() => [...entries]
-    .sort((a, b) => new Date(a.occurred_at).getTime() - new Date(b.occurred_at).getTime())
+    .sort((a, b) => new Date(b.occurred_at).getTime() - new Date(a.occurred_at).getTime())
     .filter((e) => {
       if (mode === 'all') return true
       const d = new Date(e.occurred_at)

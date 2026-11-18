@@ -12,7 +12,7 @@ import { deleteEntry, estimateNutrition, fileUrl, saveEntry, supabase, uploadFil
 import { apptLabel, docKindLabel, fmtDate, fmtMl, fromLocalInput, toLocalInput } from '../lib/format'
 import { matching, useSuggestions } from '../lib/suggestions'
 import { SuggestInput, KindPicker } from './SuggestInput'
-import { CameraIcon, CloseIcon, FileIcon, PlusIcon, TrashIcon, TypeIcon } from './Icons'
+import { ImageIcon, PdfIcon, CameraIcon, CloseIcon, FileIcon, PlusIcon, TrashIcon, TypeIcon } from './Icons'
 import { BristolIcon } from './Bristol'
 import { toast } from './Toast'
 import { cheerPet } from './Pet'
@@ -764,8 +764,12 @@ function AppointmentForm({ data, set, entryId }: { data: AppointmentData; set: S
                   <li key={d.id} className="linked-doc">
                     <FileIcon size={18} />
                     <span className="grow">{dd.title || docKindLabel(dd.kind, t)} · {fmtDate(new Date(d.occurred_at), locale, { day: 'numeric', month: 'short' })}</span>
-                    {dd.files?.map((f) => (
-                      <button key={f.path} type="button" className="link-btn" onClick={() => openFile(f)}>{t('open')}</button>
+                    {(dd.files ?? []).map((f, i, all) => (
+                      <button key={f.path} type="button" className="file-open" onClick={() => openFile(f)}
+                        aria-label={`${t('open')} ${f.name}`}>
+                        {f.mime === 'application/pdf' || /\.pdf$/i.test(f.name) ? <PdfIcon size={16} /> : <ImageIcon size={16} />}
+                        {all.length > 1 ? i + 1 : ''}
+                      </button>
                     ))}
                   </li>
                 )

@@ -91,3 +91,9 @@ export const TimelineIcon = (p: P) => (
   <Svg {...p}><path d="M6 4v16" /><circle cx="6" cy="7" r="1.6" /><circle cx="6" cy="14" r="1.6" /><path d="M11 7h9M11 14h9M11 19h6" /></Svg>
 )
 export const ChevronDown = (p: P) => <Svg {...p}><path d="M6 9l6 6 6-6" /></Svg>
+export const ImageIcon = (p: P) => (
+  <Svg {...p}><rect x="3" y="4" width="18" height="16" rx="2" /><circle cx="9" cy="10" r="1.8" /><path d="M21 16l-5-5-8 9" /></Svg>
+)
+export const PdfIcon = (p: P) => (
+  <Svg {...p}><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8zM14 3v5h5" /><path d="M8.5 17v-4h1.4a1.2 1.2 0 0 1 0 2.4H8.5M13 17v-4h1a2 2 0 0 1 0 4z" strokeWidth={1.4} /></Svg>
+)
