@@ -42,6 +42,8 @@ function useBowelSince() {
   if (last === undefined) return undefined
   if (last === null) return null
   const mins = Math.max(0, Math.floor((now - new Date(last).getTime()) / 60000))
+  // Under 20 h since the last one: nothing worth warning about.
+  if (mins < 20 * 60) return undefined
   return { days: Math.floor(mins / 1440), hours: Math.floor((mins % 1440) / 60) }
 }
 
