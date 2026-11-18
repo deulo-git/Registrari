@@ -1169,3 +1169,26 @@ button, .chip, .fchip { -webkit-tap-highlight-color: transparent; }
 .av-doc { width: 100%; display: flex; align-items: center; gap: 10px; text-align: left; background: var(--surface); border-radius: var(--radius); padding: 12px 14px; box-shadow: var(--shadow); }
 .av-doc .grow { display: flex; flex-direction: column; min-width: 0; }
 .av-doc small { color: var(--muted); }
+
+/* ── Petting: 10 different animations (rv-1 is the base stretch pose) ── */
+.mood-rub .poodle { transform-box: view-box; transform-origin: 50% 90%; }
+.mood-rub.rv-2 .poodle { animation: jump .5s cubic-bezier(.3, 1.6, .5, 1) infinite; transform: none; }
+.mood-rub.rv-3 .poodle { animation: rubShimmy .28s ease-in-out infinite alternate; }
+.mood-rub.rv-4 .poodle { animation: rubSpin 1.1s ease-in-out infinite; transform: none; }
+.mood-rub.rv-5 .p-head { transform-box: fill-box; transform-origin: 30% 90%; animation: rubTilt .5s ease-in-out infinite alternate; }
+.mood-rub.rv-5 .p-ear { transform-box: fill-box; transform-origin: 50% 0; animation: rubTilt .25s ease-in-out infinite alternate-reverse; }
+.mood-rub.rv-6 .poodle { animation: rubSquash .32s ease-in-out infinite alternate; transform: none; transform-origin: 50% 100%; }
+.mood-rub.rv-7 .p-tail { transform-box: fill-box; transform-origin: 50% 100%; animation: rubTail .09s linear infinite alternate; }
+.mood-rub.rv-7 .poodle { animation: rubShimmy .18s ease-in-out infinite alternate; }
+.mood-rub.rv-8 .poodle { transform: rotate(-9deg); transform-origin: 70% 95%; }
+.mood-rub.rv-8 .p-leg-fr, .mood-rub.rv-8 .p-leg-fl { animation: rubWave .22s ease-in-out infinite alternate; }
+.mood-rub.rv-9 .poodle { animation: rubDance .6s ease-in-out infinite; transform: none; }
+.mood-rub.rv-10 .poodle { animation: rubBow 1s ease-in-out infinite; transform: none; transform-origin: 30% 95%; }
+@keyframes rubShimmy { from { transform: rotate(-7deg); } to { transform: rotate(7deg); } }
+@keyframes rubSpin { 0% { transform: translateY(0) rotate(0); } 40% { transform: translateY(-16px) rotate(180deg); } 80%, 100% { transform: translateY(0) rotate(360deg); } }
+@keyframes rubTilt { from { transform: rotate(-12deg); } to { transform: rotate(12deg); } }
+@keyframes rubSquash { from { transform: scale(1.06, .9); } to { transform: scale(.95, 1.07); } }
+@keyframes rubTail { from { transform: rotate(-35deg); } to { transform: rotate(35deg); } }
+@keyframes rubWave { from { transform: rotate(-70deg); } to { transform: rotate(-20deg); } }
+@keyframes rubDance { 0%, 100% { transform: translateY(0) rotate(-6deg); } 25% { transform: translateY(-12px) rotate(0); } 50% { transform: translateY(0) rotate(6deg); } 75% { transform: translateY(-12px) rotate(0); } }
+@keyframes rubBow { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(14deg) translateY(4px); } }

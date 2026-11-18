@@ -224,6 +224,10 @@ export function Pet({ hidden, water }: Props) {
    * rub starts at once.
    */
   const rubbing = useRef(false)
+  /** One of the 10 petting animations; a new one is picked every couple of seconds while held. */
+  const [rubV, setRubV] = useState(1)
+  const rubTimer = useRef(0)
+  const pickRub = () => setRubV((v) => { let n = v; while (n === v) n = 1 + Math.floor(Math.random() * 10); return n })
   const holdTimer = useRef(0)
   const justRubbed = useRef(false)
   const beginRub = (el: HTMLElement | null, id: number) => {
@@ -233,6 +237,9 @@ export function Pet({ hidden, water }: Props) {
     window.clearTimeout(holdTimer.current)
     setSpeech(null)
     setMood('rub')
+    pickRub()
+    window.clearInterval(rubTimer.current)
+    rubTimer.current = window.setInterval(pickRub, 2200)
     try { el?.setPointerCapture(id) } catch { /* ignore */ }
   }
   const startRub = (e: React.PointerEvent) => {
@@ -245,6 +252,7 @@ export function Pet({ hidden, water }: Props) {
   }
   const stopRub = () => {
     window.clearTimeout(holdTimer.current)
+    window.clearInterval(rubTimer.current)
     if (!rubbing.current) return
     rubbing.current = false
     justRubbed.current = true
@@ -338,7 +346,7 @@ export function Pet({ hidden, water }: Props) {
         </svg>
       </div>
       <div ref={track} className={'pet-track' + (hidden ? ' hidden' : '')}>
-        <div ref={petRef} className={`pet mood-${mood}`}
+        <div ref={petRef} className={`pet mood-${mood}${mood === 'rub' ? ` rv-${rubV}` : ''}`}
           style={{ left: `${x * 100}%`, transitionDuration: `${moveMs}ms` }}
           onClick={poke} onPointerDown={startRub} onPointerUp={stopRub} onPointerCancel={stopRub}
           onContextMenu={(e) => e.preventDefault()} role="button" aria-label="Pipa">
