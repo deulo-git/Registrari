@@ -224,10 +224,10 @@ export function Pet({ hidden, water }: Props) {
    * rub starts at once.
    */
   const rubbing = useRef(false)
-  /** One of the 10 petting animations; a new one is picked every couple of seconds while held. */
+  /** One of the petting animations (rv-4, the somersault, was removed); a new one is picked every couple of seconds while held. */
   const [rubV, setRubV] = useState(1)
   const rubTimer = useRef(0)
-  const pickRub = () => setRubV((v) => { let n = v; while (n === v) n = 1 + Math.floor(Math.random() * 10); return n })
+  const pickRub = () => setRubV((v) => { const all = [1, 2, 3, 5, 6, 7, 8, 9, 10].filter((x) => x !== v); return all[Math.floor(Math.random() * all.length)] })
   const holdTimer = useRef(0)
   const justRubbed = useRef(false)
   const beginRub = (el: HTMLElement | null, id: number) => {
