@@ -8,8 +8,8 @@ import {
 import { useBackClose } from '../lib/backClose'
 import { useI18n, type TKey } from '../lib/i18n'
 import { useConfig } from '../lib/data'
-import { usePin } from '../lib/pin'
-import { deleteEntry, estimateNutrition, fileUrl, saveEntry, supabase, uploadFile } from '../lib/api'
+import { useAuth } from '../lib/auth'
+import { deleteEntry, estimateNutrition, fileUrl, getActiveOwner, saveEntry, supabase, uploadFile } from '../lib/api'
 import { apptLabel, docKindLabel, fmtDate, fmtMl, fromLocalInput, toLocalInput } from '../lib/format'
 import { matching, useSuggestions } from '../lib/suggestions'
 import { SuggestInput, KindPicker } from './SuggestInput'
@@ -65,17 +65,17 @@ const hasNutrients = (i: FoodItem) =>
  * save) for the foods that have no nutrient values yet, and update the entry
  * if it answers. Any failure is ignored: the meal is already saved.
  */
-function enrichMealLater(pin: string, lang: string, id: string, occurredAt: string, meal: MealData) {
+function enrichMealLater(lang: string, id: string, occurredAt: string, meal: MealData) {
   const missing = meal.items.map((it, i) => ({ it, i })).filter(({ it }) => !hasNutrients(it))
   if (!missing.length) return
-  estimateNutrition(pin, lang, missing.map((m) => m.it))
+  estimateNutrition(lang, missing.map((m) => m.it))
     .then((est) => {
       const items = [...meal.items]
       missing.forEach(({ it, i }, n) => {
         const e = est[n]
         if (e) items[i] = { ...it, qty: it.qty ?? e.qty, unit: it.qty ? it.unit : e.unit, kcal: e.kcal, protein: e.protein, carbs: e.carbs, fat: e.fat, fiber: e.fiber }
       })
-      return saveEntry(pin, { id, type: 'meal', occurred_at: occurredAt, data: { ...meal, items } })
+      return saveEntry({ id, type: 'meal', occurred_at: occurredAt, data: { ...meal, items } })
     })
     .catch(() => { /* the meal stays saved without nutrients */ })
 }
@@ -84,7 +84,8 @@ export function EntrySheet({ type, entry, defaultDate, onClose }: Props) {
   const { t, lang } = useI18n()
   useBackClose(onClose)
   const { config } = useConfig()
-  const { withPin } = usePin()
+  const { can } = useAuth()
+  const readOnly = !can.write
   const initialWhen = useMemo(() => {
     if (entry) return new Date(entry.occurred_at)
     const now = new Date()
@@ -127,31 +128,29 @@ export function EntrySheet({ type, entry, defaultDate, onClose }: Props) {
   })()
 
   const save = async () => {
-    if (!valid || busy) return
+    if (!valid || busy || readOnly) return
     setBusy(true)
     try {
-      const ok = await withPin(async (pin) => {
-        let payload = data
-        if (type === 'meal') {
-          const m = data as MealData
-          payload = { ...m, items: m.items.filter((i) => i.name.trim()) }
-        }
-        if (type === 'document' && pendingFiles.length) {
-          const uploaded: StoredFile[] = []
-          for (const f of pendingFiles) uploaded.push(await uploadFile(pin, f))
-          payload = { ...(data as DocumentData), files: [...(data as DocumentData).files, ...uploaded] }
-        }
-        const occurredAt = fromLocalInput(when).toISOString()
-        const id = await saveEntry(pin, { id: entry?.id, type, occurred_at: occurredAt, data: payload })
-        if (type === 'meal') enrichMealLater(pin, lang, id, occurredAt, payload as MealData)
-        return true
-      })
+      let payload = data
+      if (type === 'meal') {
+        const m = data as MealData
+        payload = { ...m, items: m.items.filter((i) => i.name.trim()) }
+      }
+      if (type === 'document' && pendingFiles.length) {
+        const uploaded: StoredFile[] = []
+        for (const f of pendingFiles) uploaded.push(await uploadFile(f))
+        payload = { ...(data as DocumentData), files: [...(data as DocumentData).files, ...uploaded] }
+      }
+      const occurredAt = fromLocalInput(when).toISOString()
+      const id = await saveEntry({ id: entry?.id, type, occurred_at: occurredAt, data: payload })
+      if (type === 'meal') enrichMealLater(lang, id, occurredAt, payload as MealData)
+      const ok = true
       if (ok) { toast(t('saved')); cheerPet(); onClose() }
-    } catch { /* toast already shown */ } finally { setBusy(false) }
+    } catch { toast(t('errorGeneric'), 'error') } finally { setBusy(false) }
   }
 
   const remove = async () => {
-    if (!entry || busy) return
+    if (!entry || busy || readOnly) return
     const yes = await confirmDialog({
       title: t('confirmTitle'), message: t('confirmDelete'),
       confirmLabel: t('delete'), cancelLabel: t('cancel'), danger: true,
@@ -159,9 +158,9 @@ export function EntrySheet({ type, entry, defaultDate, onClose }: Props) {
     if (!yes) return
     setBusy(true)
     try {
-      const ok = await withPin(async (pin) => { await deleteEntry(pin, entry.id); return true })
-      if (ok) { toast(t('deleted')); onClose() }
-    } catch { /* toast shown */ } finally { setBusy(false) }
+      await deleteEntry(entry)
+      toast(t('deleted')); onClose()
+    } catch { toast(t('errorGeneric'), 'error') } finally { setBusy(false) }
   }
 
   return (
@@ -174,7 +173,7 @@ export function EntrySheet({ type, entry, defaultDate, onClose }: Props) {
           <button type="button" className="icon-btn" onClick={onClose} aria-label={t('close')}><CloseIcon /></button>
         </header>
 
-        <div className="sheet-body">
+        <fieldset className="sheet-body ro" disabled={readOnly}>
           <div className="field">
             <span>{t('dateTime')}</span>
             <input type="datetime-local" value={when} onChange={(e) => setWhen(e.target.value)} />
@@ -213,17 +212,17 @@ export function EntrySheet({ type, entry, defaultDate, onClose }: Props) {
                 onChange={(v) => setData({ ...data, notes: v } as DataByType[EntryType])} />
             </div>
           )}
-        </div>
+        </fieldset>
 
         <footer className="sheet-foot">
-          {entry && (
+          {entry && !readOnly && (
             <button type="button" className="btn ghost danger" onClick={remove} disabled={busy}>
               <TrashIcon size={18} /> {t('delete')}
             </button>
           )}
-          <button type="button" className="btn primary" onClick={save} disabled={!valid || busy}>
+          {!readOnly && <button type="button" className="btn primary" onClick={save} disabled={!valid || busy}>
             {busy && type === 'document' && pendingFiles.length ? t('uploading') : t('save')}
-          </button>
+          </button>}
         </footer>
       </div>
     </div>
@@ -722,7 +721,7 @@ function AppointmentForm({ data, set, entryId }: { data: AppointmentData; set: S
   const [docs, setDocs] = useState<Entry[] | null>(null)
   useEffect(() => {
     if (!entryId) return
-    supabase.from('entries').select('*').eq('type', 'document').eq('data->>appointmentId', entryId)
+    supabase.from('entries').select('*').eq('owner_id', getActiveOwner() ?? '').eq('type', 'document').eq('data->>appointmentId', entryId)
       .order('occurred_at', { ascending: false })
       .then(({ data: rows }) => setDocs((rows as Entry[]) ?? []))
   }, [entryId])
@@ -789,7 +788,7 @@ function AppointmentLink({ data, set }: { data: DocumentData; set: SetData }) {
   const { t, locale } = useI18n()
   const [appts, setAppts] = useState<Entry[]>([])
   useEffect(() => {
-    supabase.from('entries').select('*').eq('type', 'appointment')
+    supabase.from('entries').select('*').eq('owner_id', getActiveOwner() ?? '').eq('type', 'appointment')
       .order('occurred_at', { ascending: false }).limit(200)
       .then(({ data: rows }) => setAppts((rows as Entry[]) ?? []))
   }, [])

@@ -8,7 +8,7 @@ import { APPT_COLORS } from '../lib/apptColors'
 import { ApptViewer, isPdfFile } from '../components/ApptViewer'
 
 /** Every appointment the patient has had, newest first, grouped by year. */
-export function Appointments({ onAdd, onEdit, onSettings }: { onAdd: () => void; onEdit: (e: Entry) => void; onSettings: () => void }) {
+export function Appointments({ onAdd, onEdit, onSettings }: { onAdd?: () => void; onEdit: (e: Entry) => void; onSettings: () => void }) {
   const { t, locale } = useI18n()
   const from = useMemo(() => new Date(2000, 0, 1), [])
   const to = useMemo(() => new Date(2100, 0, 1), [])
@@ -52,7 +52,7 @@ export function Appointments({ onAdd, onEdit, onSettings }: { onAdd: () => void;
       <div className="screen-head">
         <h1>{t('appointments')}</h1>
         <div className="head-actions">
-          <button type="button" className="btn primary small" onClick={onAdd}><PlusIcon size={18} /> {t('add')}</button>
+          {onAdd && <button type="button" className="btn primary small" onClick={onAdd}><PlusIcon size={18} /> {t('add')}</button>}
           <button type="button" className="icon-btn" onClick={onSettings} aria-label={t('settings')}><SettingsIcon size={22} /></button>
         </div>
       </div>

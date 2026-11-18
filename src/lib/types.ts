@@ -176,3 +176,50 @@ export function mealTotals(items: FoodItem[]) {
   }
   return t
 }
+
+// ── Accounts, pets and helpers ──
+
+export const PET_SPECIES = ['poodle', 'cat', 'rabbit', 'penguin', 'fox', 'panda', 'turtle', 'owl', 'frog', 'dragon'] as const
+export type PetSpecies = (typeof PET_SPECIES)[number]
+
+/** The four sliders (0-100) that make each pet unique. */
+export interface PetSliders { energy: number; affection: number; mischief: number; chatty: number }
+export const PERSONAL_KEYS = ['partner', 'neighbour', 'series', 'music', 'food', 'hobby', 'city', 'friend', 'book'] as const
+export type PersonalKey = (typeof PERSONAL_KEYS)[number]
+export interface PetProfile {
+  species: PetSpecies
+  name: string
+  /** "Personalised experience": the pet uses the answers below in what it says. */
+  personalized: boolean
+  sliders: PetSliders
+  answers: Partial<Record<PersonalKey, string>>
+}
+export const DEFAULT_PET: PetProfile = {
+  species: 'poodle', name: 'Pipa', personalized: false,
+  sliders: { energy: 50, affection: 50, mischief: 50, chatty: 50 }, answers: {},
+}
+
+export interface Profile {
+  id: string
+  email: string | null
+  first_name: string
+  last_name: string
+  birth_date: string | null
+  weight_kg: number | null
+  height_cm: number | null
+  pet: PetProfile
+  config: Partial<Config>
+  legacy: boolean
+}
+
+/** full: everything but managing helpers · edit: view/add/edit/delete · limited: view only, chosen types. */
+export const SHARE_LEVELS = ['full', 'edit', 'limited'] as const
+export type ShareLevel = (typeof SHARE_LEVELS)[number]
+export interface Share {
+  id: string
+  owner_id: string
+  helper_email: string
+  helper_id: string | null
+  level: ShareLevel
+  types: EntryType[]
+}

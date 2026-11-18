@@ -1,38 +1,22 @@
-import { createClient } from '@supabase/supabase-js'
-import { DEFAULT_CONFIG, type Config, type Entry, type EntryType, type FoodItem, type StoredFile } from './types'
+import { createClient, type Session } from '@supabase/supabase-js'
+import {
+  DEFAULT_CONFIG, DEFAULT_PET, type Config, type Entry, type EntryType, type FoodItem, type Profile, type PetProfile,
+  type Share, type StoredFile,
+} from './types'
 
 export const supabase = createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_KEY, {
-  auth: { persistSession: false },
+  auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
 })
 
-/**
- * Writes need the shared PIN. Once it has been accepted on a device it is kept
- * in localStorage, so the daily user is not asked every time; "forget" in
- * settings clears it.
- */
-const PIN_KEY = 'registrari.pin'
-export function getStoredPin(): string | null {
-  try { return localStorage.getItem(PIN_KEY) } catch { return null }
-}
-export function storePin(pin: string | null) {
-  try {
-    if (pin) localStorage.setItem(PIN_KEY, pin)
-    else localStorage.removeItem(PIN_KEY)
-  } catch { /* ignore */ }
-}
-
-export type RpcError = 'bad_pin' | 'locked' | 'no_pin' | 'invalid_pin' | 'network' | string
 export class ApiError extends Error {
-  constructor(public code: RpcError) { super(code) }
+  constructor(public code: string) { super(code) }
 }
 
-async function rpc<T = Record<string, unknown>>(fn: string, args: Record<string, unknown>): Promise<T> {
-  const { data, error } = await supabase.rpc(fn, args)
-  if (error) throw new ApiError('network')
-  const res = data as { ok: boolean; error?: string } & T
-  if (!res.ok) throw new ApiError(res.error ?? 'unknown')
-  return res
-}
+// ── Whose data is on screen: the user's own, or the owner who shared theirs with them ──
+let activeOwner: string | null = null
+export function setActiveOwner(id: string | null) { activeOwner = id }
+export function getActiveOwner() { return activeOwner }
+const owner = () => { if (!activeOwner) throw new ApiError('no_owner'); return activeOwner }
 
 // ── Change notifications: screens refetch when anything was written. ──
 const listeners = new Set<() => void>()
@@ -42,23 +26,70 @@ export function onDataChange(fn: () => void) {
 }
 export function emitDataChange() { listeners.forEach((f) => f()) }
 
-// ── PIN ──
-export async function pinStatus(): Promise<{ has_pin: boolean; locked: boolean }> {
-  const { data, error } = await supabase.rpc('pin_status')
-  if (error) throw new ApiError('network')
-  return data
+// ── Auth ──
+export const signInWithGoogle = () =>
+  supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.origin } })
+export const signOut = () => supabase.auth.signOut()
+export async function currentSession(): Promise<Session | null> {
+  const { data } = await supabase.auth.getSession()
+  return data.session
 }
-export const checkPin = (pin: string) => rpc('check_pin', { p_pin: pin })
-export const setPin = (oldPin: string | null, newPin: string) => rpc('set_pin', { p_old: oldPin, p_new: newPin })
+
+// ── Profiles & helpers ──
+const toProfile = (r: Record<string, unknown>): Profile => ({
+  ...(r as unknown as Profile),
+  pet: { ...DEFAULT_PET, ...((r.pet as Partial<PetProfile>) ?? {}) },
+  config: (r.config as Partial<Config>) ?? {},
+})
+
+export async function fetchProfiles(): Promise<Profile[]> {
+  const { data, error } = await supabase.from('profiles').select('*')
+  if (error) throw new ApiError('network')
+  return (data ?? []).map(toProfile)
+}
+
+export type NewProfile = Pick<Profile, 'first_name' | 'last_name' | 'birth_date' | 'weight_kg' | 'height_cm' | 'pet'> & { email: string | null }
+export async function createProfile(id: string, p: NewProfile): Promise<void> {
+  const patientName = `${p.first_name} ${p.last_name}`.trim()
+  const { error } = await supabase.from('profiles').insert({ id, ...p, config: { patientName } })
+  if (error) throw new ApiError('network')
+  // The first person to sign up takes the data that existed before accounts.
+  await supabase.rpc('claim_legacy')
+}
+
+export async function updateProfile(id: string, patch: Partial<Omit<Profile, 'id'>>): Promise<void> {
+  const { error } = await supabase.from('profiles').update({ ...patch, updated_at: new Date().toISOString() }).eq('id', id)
+  if (error) throw new ApiError('network')
+}
+
+export async function linkShares() { await supabase.rpc('link_shares') }
+
+/** Shares I gave (owner) and shares given to me (helper). */
+export async function fetchShares(): Promise<Share[]> {
+  const { data, error } = await supabase.from('shares').select('*').order('created_at')
+  if (error) throw new ApiError('network')
+  return (data ?? []) as Share[]
+}
+export async function saveShare(s: { owner_id: string; helper_email: string; level: Share['level']; types: EntryType[] }) {
+  const { error } = await supabase.from('shares').upsert(
+    { ...s, helper_email: s.helper_email.trim().toLowerCase() }, { onConflict: 'owner_id,helper_email' })
+  if (error) throw new ApiError('network')
+}
+export async function deleteShare(id: string) {
+  const { error } = await supabase.from('shares').delete().eq('id', id)
+  if (error) throw new ApiError('network')
+}
 
 // ── Entries ──
 export async function fetchEntries(from: Date, to: Date, types?: EntryType[]): Promise<Entry[]> {
+  const o = owner()
   const out: Entry[] = []
   const page = 1000
   for (let offset = 0; ; offset += page) {
     let q = supabase
       .from('entries')
       .select('*')
+      .eq('owner_id', o)
       .gte('occurred_at', from.toISOString())
       .lt('occurred_at', to.toISOString())
       .order('occurred_at', { ascending: true })
@@ -74,40 +105,42 @@ export async function fetchEntries(from: Date, to: Date, types?: EntryType[]): P
 
 /** When the last bowel movement happened (null if none yet). */
 export async function fetchLastBowel(): Promise<string | null> {
-  const { data, error } = await supabase.from('entries').select('occurred_at').eq('type', 'bowel')
+  const { data, error } = await supabase.from('entries').select('occurred_at').eq('owner_id', owner()).eq('type', 'bowel')
     .lte('occurred_at', new Date().toISOString()).order('occurred_at', { ascending: false }).limit(1)
   if (error) throw new ApiError('network')
   return (data as { occurred_at: string }[])[0]?.occurred_at ?? null
 }
 
-export async function saveEntry(pin: string, e: { id?: string; type: EntryType; occurred_at: string; data: unknown }) {
-  const r = await rpc<{ id: string }>('save_entry', {
-    p_pin: pin, p_id: e.id ?? null, p_type: e.type, p_occurred_at: e.occurred_at, p_data: e.data,
+export async function saveEntry(e: { id?: string; type: EntryType; occurred_at: string; data: unknown }) {
+  const id = e.id ?? crypto.randomUUID()
+  const { error } = await supabase.from('entries').upsert({
+    id, owner_id: owner(), type: e.type, occurred_at: e.occurred_at, data: e.data, updated_at: new Date().toISOString(),
   })
-  emitDataChange()
-  return r.id
-}
-
-export async function deleteEntry(pin: string, id: string) {
-  const r = await rpc<{ paths: string[] }>('delete_entry', { p_pin: pin, p_id: id })
-  if (r.paths?.length) await supabase.storage.from('documents').remove(r.paths)
-  emitDataChange()
-}
-
-// ── Settings ──
-export async function fetchConfig(): Promise<Config> {
-  const { data, error } = await supabase.from('app_settings').select('value').eq('key', 'config').maybeSingle()
   if (error) throw new ApiError('network')
-  return { ...DEFAULT_CONFIG, ...((data?.value as Partial<Config>) ?? {}) }
-}
-export async function saveConfig(pin: string, c: Config) {
-  await rpc('save_setting', { p_pin: pin, p_key: 'config', p_value: c })
+  emitDataChange()
+  return id
 }
 
-// ── Files ──
-export async function uploadFile(pin: string, file: File): Promise<StoredFile> {
+export async function deleteEntry(entry: Entry) {
+  const { error } = await supabase.from('entries').delete().eq('id', entry.id)
+  if (error) throw new ApiError('network')
+  const paths = ((entry.data as { files?: StoredFile[] }).files ?? []).map((f) => f.path)
+  if (paths.length) await supabase.storage.from('documents').remove(paths)
+  emitDataChange()
+}
+
+// ── Settings (stored in the owner's profile) ──
+export function configFrom(p: Profile | undefined): Config {
+  return { ...DEFAULT_CONFIG, ...(p?.config ?? {}) }
+}
+export async function saveConfig(c: Config) {
+  await updateProfile(owner(), { config: c })
+}
+
+// ── Files (under <owner id>/) ──
+export async function uploadFile(file: File): Promise<StoredFile> {
   const ext = (file.name.split('.').pop() || (file.type === 'application/pdf' ? 'pdf' : 'jpg')).toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 5) || 'bin'
-  const { path } = await rpc<{ path: string }>('issue_upload', { p_pin: pin, p_ext: ext })
+  const path = `${owner()}/${crypto.randomUUID()}.${ext}`
   const { error } = await supabase.storage.from('documents').upload(path, file, { contentType: file.type || undefined })
   if (error) throw new ApiError('network')
   return { path, name: file.name, mime: file.type, size: file.size }
@@ -120,9 +153,9 @@ export async function fileUrl(path: string): Promise<string> {
 }
 
 // ── AI nutrition (edge function "nutrition", Gemini behind it) ──
-export async function estimateNutrition(pin: string, lang: string, items: FoodItem[]): Promise<FoodItem[]> {
+export async function estimateNutrition(lang: string, items: FoodItem[]): Promise<FoodItem[]> {
   const { data, error } = await supabase.functions.invoke('nutrition', {
-    body: { pin, lang, items: items.map((i) => ({ name: i.name, qty: i.qty, unit: i.unit })) },
+    body: { lang, items: items.map((i) => ({ name: i.name, qty: i.qty, unit: i.unit })) },
   })
   if (error) throw new ApiError('ai_error')
   if (!data?.ok) throw new ApiError(data?.error ?? 'ai_error')

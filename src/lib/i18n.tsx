@@ -47,6 +47,7 @@ const ca = {
   appt_imaging: 'Ecografia / imatge',
   appt_emergency: 'Urgències',
   appt_other: 'Altres',
+  viewOnly: 'Només consulta',
   appt_test: 'Prova',
   test_mri: 'Ressonància',
   test_colonoscopy: 'Colonoscòpia',
@@ -344,6 +345,7 @@ const es: Dict = {
   appt_imaging: 'Ecografía / imagen',
   appt_emergency: 'Urgencias',
   appt_other: 'Otros',
+  viewOnly: 'Solo consulta',
   appt_test: 'Prueba',
   test_mri: 'Resonancia',
   test_colonoscopy: 'Colonoscopia',
@@ -605,6 +607,8 @@ interface I18n {
   /** Liquid kind label: built-in key → translated, custom → as typed. */
   liquidLabel: (k?: string) => string
   locale: string
+  /** Inline two-language text: L('Català', 'Castellano'). */
+  L: (ca: string, es: string) => string
 }
 
 const Ctx = createContext<I18n | null>(null)
@@ -621,7 +625,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   const symptomLabel = (c: string) => (d as Record<string, string>)['sym_' + c] ?? c
   const liquidLabel = (k?: string) => (d as Record<string, string>)['liquid_' + (k || 'water')] ?? k ?? ''
   return (
-    <Ctx.Provider value={{ lang, setLang, t, symptomLabel, liquidLabel, locale: lang === 'ca' ? 'ca-ES' : 'es-ES' }}>
+    <Ctx.Provider value={{ lang, setLang, t, symptomLabel, liquidLabel, locale: lang === 'ca' ? 'ca-ES' : 'es-ES', L: (ca, es) => (lang === 'ca' ? ca : es) }}>
       {children}
     </Ctx.Provider>
   )

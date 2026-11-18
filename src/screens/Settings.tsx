@@ -1,44 +1,66 @@
 import { useEffect, useState } from 'react'
 import { useConfig } from '../lib/data'
 import { useI18n, type Lang } from '../lib/i18n'
-import { usePin } from '../lib/pin'
-import { getStoredPin, setPin, storePin } from '../lib/api'
-import type { Config, MedicationPreset } from '../lib/types'
-import { ChevronLeft, CloseIcon, LockIcon, PlusIcon } from '../components/Icons'
+import { useAuth } from '../lib/auth'
+import { deleteShare, saveShare, updateProfile } from '../lib/api'
+import { ENTRY_TYPES, SHARE_LEVELS, TYPE_COLOR, type Config, type EntryType, type MedicationPreset, type PetProfile, type ShareLevel } from '../lib/types'
+import { ChevronLeft, CloseIcon, LockIcon, PlusIcon, TypeIcon } from '../components/Icons'
+import { PetSetup } from '../components/PetSetup'
 import { toast } from '../components/Toast'
+import { confirmDialog } from '../components/Confirm'
+
+const LEVEL_TEXT: Record<ShareLevel, { ca: [string, string]; es: [string, string] }> = {
+  full: { ca: ['Accés il·limitat', 'Pot fer tot el que fas tu, excepte gestionar ajudants.'], es: ['Acceso ilimitado', 'Puede hacer todo lo que haces tú, salvo gestionar ayudantes.'] },
+  edit: { ca: ['Consulta, edició i eliminació', 'Pot veure, afegir, editar i esborrar registres. No toca la configuració.'], es: ['Consulta, edición y eliminación', 'Puede ver, añadir, editar y borrar registros. No toca la configuración.'] },
+  limited: { ca: ['Accés limitat', 'Només pot consultar els tipus de registre que triïs.'], es: ['Acceso limitado', 'Solo puede consultar los tipos de registro que elijas.'] },
+}
 
 export function Settings({ onBack }: { onBack: () => void }) {
-  const { t, lang, setLang, symptomLabel } = useI18n()
+  const { t, lang, setLang, symptomLabel, L } = useI18n()
   const { config, updateConfig } = useConfig()
-  const { withPin } = usePin()
+  const { me, active, access, can, myShares, switchOwner, refresh, signOut, user } = useAuth()
   const [draft, setDraft] = useState<Config>(config)
   const [newCat, setNewCat] = useState('')
   const [newMed, setNewMed] = useState<MedicationPreset>({ name: '', dose: '', unit: '' })
-  const [remembered, setRemembered] = useState(!!getStoredPin())
-  const [changing, setChanging] = useState(false)
-  const [pins, setPins] = useState({ old: '', next: '' })
+  const [petDraft, setPetDraft] = useState<PetProfile | undefined>(active?.profile.pet)
+  const [mine, setMine] = useState({
+    first_name: me?.first_name ?? '', last_name: me?.last_name ?? '', birth_date: me?.birth_date ?? '',
+    weight_kg: String(me?.weight_kg ?? ''), height_cm: String(me?.height_cm ?? ''),
+  })
+  const [invite, setInvite] = useState<{ email: string; level: ShareLevel; types: EntryType[] }>({ email: '', level: 'edit', types: [...ENTRY_TYPES] })
 
   useEffect(() => { setDraft(config) }, [config])
+  useEffect(() => { setPetDraft(active?.profile.pet) }, [active])
   const dirty = JSON.stringify(draft) !== JSON.stringify(config)
+  const petDirty = !!petDraft && JSON.stringify(petDraft) !== JSON.stringify(active?.profile.pet)
+  const mineDirty = !!me && (mine.first_name !== me.first_name || mine.last_name !== me.last_name || mine.birth_date !== (me.birth_date ?? '')
+    || mine.weight_kg !== String(me.weight_kg ?? '') || mine.height_cm !== String(me.height_cm ?? ''))
 
   const save = async () => {
-    const ok = await updateConfig(draft).catch(() => false)
-    if (ok) { toast(t('saved')); setRemembered(!!getStoredPin()) }
+    const ok = await updateConfig(draft)
+    if (ok) toast(t('saved')); else toast(t('errorGeneric'), 'error')
   }
-
-  const changePin = async () => {
-    if (!/^\d{4}$/.test(pins.old) || !/^\d{4}$/.test(pins.next)) return
+  const savePet = async () => {
+    if (!active || !petDraft) return
+    try { await updateProfile(active.ownerId, { pet: { ...petDraft, name: petDraft.name.trim() || 'Pipa' } }); await refresh(); toast(t('saved')) }
+    catch { toast(t('errorGeneric'), 'error') }
+  }
+  const saveMine = async () => {
+    if (!me) return
     try {
-      await setPin(pins.old, pins.next)
-      storePin(pins.next)
-      setRemembered(true)
-      setChanging(false)
-      setPins({ old: '', next: '' })
-      toast(t('pinChanged'))
-    } catch (e) {
-      const code = (e as { code?: string }).code
-      toast(code === 'locked' ? t('pinLocked') : code === 'bad_pin' ? t('pinWrong') : t('errorGeneric'), 'error')
-    }
+      await updateProfile(me.id, {
+        first_name: mine.first_name.trim(), last_name: mine.last_name.trim(), birth_date: mine.birth_date || null,
+        weight_kg: Number(mine.weight_kg) || null, height_cm: Number(mine.height_cm) || null,
+      })
+      await refresh(); toast(t('saved'))
+    } catch { toast(t('errorGeneric'), 'error') }
+  }
+  const addHelper = async () => {
+    if (!me || !/^\S+@\S+\.\S+$/.test(invite.email.trim())) { toast(L('Escriu un correu vàlid', 'Escribe un correo válido'), 'error'); return }
+    try {
+      await saveShare({ owner_id: me.id, helper_email: invite.email, level: invite.level, types: invite.level === 'limited' ? invite.types : [] })
+      setInvite({ ...invite, email: '' }); await refresh(); toast(t('saved'))
+    } catch { toast(t('errorGeneric'), 'error') }
   }
 
   return (
@@ -48,6 +70,23 @@ export function Settings({ onBack }: { onBack: () => void }) {
         <h1>{t('settings')}</h1>
         <span className="icon-btn" aria-hidden="true" />
       </div>
+
+      {access.length > 1 && (
+        <section className="card">
+          <div className="field">
+            <span>{L('Dades que veus', 'Datos que ves')}</span>
+            <div className="level-list" role="radiogroup">
+              {access.map((a) => (
+                <button key={a.ownerId} type="button" role="radio" aria-checked={a.ownerId === active?.ownerId}
+                  className={'level' + (a.ownerId === active?.ownerId ? ' on' : '')} onClick={() => switchOwner(a.ownerId)}>
+                  <b>{a.level === 'owner' ? L('Les meves dades', 'Mis datos') : `${a.profile.first_name} ${a.profile.last_name}`}</b>
+                  {a.level !== 'owner' && <small>{LEVEL_TEXT[a.level as ShareLevel][lang][0]}</small>}
+                </button>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       <section className="card">
         <div className="field">
@@ -61,6 +100,41 @@ export function Settings({ onBack }: { onBack: () => void }) {
           </div>
         </div>
       </section>
+
+      {me && (
+        <section className="card">
+          <div className="field"><span>{L('El meu perfil', 'Mi perfil')}</span></div>
+          <div className="row">
+            <label className="field grow"><span>{L('Nom', 'Nombre')}</span><input value={mine.first_name} onChange={(e) => setMine({ ...mine, first_name: e.target.value })} /></label>
+            <label className="field grow"><span>{L('Cognoms', 'Apellidos')}</span><input value={mine.last_name} onChange={(e) => setMine({ ...mine, last_name: e.target.value })} /></label>
+          </div>
+          <label className="field"><span>{L('Data de naixement', 'Fecha de nacimiento')}</span>
+            <input type="date" value={mine.birth_date} onChange={(e) => setMine({ ...mine, birth_date: e.target.value })} /></label>
+          <div className="row">
+            <label className="field grow"><span>{L('Pes (kg)', 'Peso (kg)')}</span>
+              <input type="number" inputMode="decimal" step="0.1" value={mine.weight_kg} onChange={(e) => setMine({ ...mine, weight_kg: e.target.value })} /></label>
+            <label className="field grow"><span>{L('Alçada (cm)', 'Altura (cm)')}</span>
+              <input type="number" inputMode="numeric" value={mine.height_cm} onChange={(e) => setMine({ ...mine, height_cm: e.target.value })} /></label>
+          </div>
+          {mineDirty && <button type="button" className="btn primary" onClick={saveMine}>{t('save')}</button>}
+        </section>
+      )}
+
+      {petDraft && can.admin && (
+        <section className="card">
+          <div className="field"><span>{L('Mascota', 'Mascota')}</span></div>
+          <PetSetup value={petDraft} onChange={setPetDraft} />
+          {petDirty && (
+            <div className="row">
+              <button type="button" className="btn ghost" onClick={() => setPetDraft(active?.profile.pet)}>{t('cancel')}</button>
+              <button type="button" className="btn primary grow" onClick={savePet}>{t('save')}</button>
+            </div>
+          )}
+        </section>
+      )}
+
+      {!can.admin && <p className="muted small-print">{L('Només el propietari (o un ajudant amb accés il·limitat) pot canviar la configuració.', 'Solo el propietario (o un ayudante con acceso ilimitado) puede cambiar la configuración.')}</p>}
+      <fieldset className="plain" disabled={!can.admin}>
 
       <section className="card">
         <label className="field">
@@ -129,38 +203,70 @@ export function Settings({ onBack }: { onBack: () => void }) {
         </div>
       </section>
 
-      {dirty && (
+      </fieldset>
+
+      {dirty && can.admin && (
         <div className="save-bar">
           <button type="button" className="btn ghost" onClick={() => setDraft(config)}>{t('cancel')}</button>
           <button type="button" className="btn primary" onClick={save}>{t('save')}</button>
         </div>
       )}
 
+      {can.share && me && (
+        <section className="card helpers">
+          <div className="field">
+            <span>{L('Ajudants de gestió', 'Ayudantes de gestión')}</span>
+            <small className="muted">{L('Dona accés a una altra persona (amb el seu compte de Google) perquè t’ajudi a gestionar les dades.', 'Da acceso a otra persona (con su cuenta de Google) para que te ayude a gestionar los datos.')}</small>
+          </div>
+          <ul className="share-list">
+            {myShares.map((sh) => (
+              <li key={sh.id}>
+                <div className="grow">
+                  <strong>{sh.helper_email}</strong>
+                  <small>{LEVEL_TEXT[sh.level][lang][0]}{sh.level === 'limited' ? ` · ${sh.types.length} ${L('tipus', 'tipos')}` : ''}{sh.helper_id ? '' : ` · ${L('pendent', 'pendiente')}`}</small>
+                </div>
+                <button type="button" className="icon-btn small" aria-label={t('delete')} onClick={async () => {
+                  const yes = await confirmDialog({ title: t('confirmTitle'), message: L('Treure l’accés a aquesta persona?', '¿Quitar el acceso a esta persona?'), confirmLabel: t('delete'), cancelLabel: t('cancel'), danger: true })
+                  if (!yes) return
+                  try { await deleteShare(sh.id); await refresh() } catch { toast(t('errorGeneric'), 'error') }
+                }}><CloseIcon size={16} /></button>
+              </li>
+            ))}
+          </ul>
+          <div className="field">
+            <input type="email" inputMode="email" placeholder="correu@gmail.com" value={invite.email} onChange={(e) => setInvite({ ...invite, email: e.target.value })} />
+            <div className="level-list" role="radiogroup">
+              {SHARE_LEVELS.map((lv) => (
+                <button key={lv} type="button" role="radio" aria-checked={invite.level === lv} className={'level' + (invite.level === lv ? ' on' : '')}
+                  onClick={() => setInvite({ ...invite, level: lv })}>
+                  <b>{LEVEL_TEXT[lv][lang][0]}</b><small>{LEVEL_TEXT[lv][lang][1]}</small>
+                </button>
+              ))}
+            </div>
+            {invite.level === 'limited' && (
+              <div className="chips">
+                {ENTRY_TYPES.map((ty) => {
+                  const on = invite.types.includes(ty)
+                  return (
+                    <button key={ty} type="button" aria-pressed={on} className={'chip' + (on ? ' on' : '')} style={{ '--c': TYPE_COLOR[ty] } as React.CSSProperties}
+                      onClick={() => setInvite({ ...invite, types: on ? invite.types.filter((x) => x !== ty) : [...invite.types, ty] })}>
+                      <TypeIcon type={ty} size={14} color={on ? '#fff' : TYPE_COLOR[ty]} /> {t(`type_${ty}`)}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+            <button type="button" className="btn primary" onClick={addHelper}><PlusIcon size={18} /> {L('Convidar', 'Invitar')}</button>
+          </div>
+        </section>
+      )}
+
       <section className="card">
         <div className="field">
-          <span>{t('security')}</span>
-          <p className="pin-state"><LockIcon size={16} /> {remembered ? t('pinRemembered') : t('pinNotRemembered')}</p>
+          <span>{L('Compte', 'Cuenta')}</span>
+          <p className="pin-state"><LockIcon size={16} /> {user?.email}</p>
         </div>
-        {changing ? (
-          <div className="row">
-            <input className="grow" type="password" inputMode="numeric" maxLength={4} placeholder={t('pinCurrent')}
-              value={pins.old} onChange={(e) => setPins({ ...pins, old: e.target.value.replace(/\D/g, '') })} />
-            <input className="grow" type="password" inputMode="numeric" maxLength={4} placeholder={t('pinNew')}
-              value={pins.next} onChange={(e) => setPins({ ...pins, next: e.target.value.replace(/\D/g, '') })} />
-            <button type="button" className="btn primary" onClick={changePin}>{t('save')}</button>
-          </div>
-        ) : (
-          <div className="row">
-            <button type="button" className="btn ghost grow" onClick={() => setChanging(true)}>{t('changePin')}</button>
-            {remembered ? (
-              <button type="button" className="btn ghost grow" onClick={() => { storePin(null); setRemembered(false) }}>{t('forgetPin')}</button>
-            ) : (
-              <button type="button" className="btn ghost grow" onClick={async () => {
-                await withPin(async () => true).catch(() => {}); setRemembered(!!getStoredPin())
-              }}>{t('pinEnter')}</button>
-            )}
-          </div>
-        )}
+        <button type="button" className="btn ghost" onClick={signOut}>{L('Tancar sessió', 'Cerrar sesión')}</button>
       </section>
 
       <p className="muted small-print">{t('installHint')}</p>

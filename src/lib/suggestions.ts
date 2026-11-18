@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { onDataChange, supabase } from './api'
+import { getActiveOwner, onDataChange, supabase } from './api'
 import { LIQUID_KINDS, apptGroup, type AppointmentData, type DocumentData, type FoodItem, type MealData, type MedicationData, type MedicationPreset, type WaterData } from './types'
 
 /**
@@ -30,6 +30,7 @@ async function load(): Promise<Suggestions> {
   const { data, error } = await supabase
     .from('entries')
     .select('type,data')
+    .eq('owner_id', getActiveOwner() ?? '')
     .order('occurred_at', { ascending: false })
     .limit(2000)
   if (error || !data) return EMPTY
@@ -94,6 +95,9 @@ async function load(): Promise<Suggestions> {
 /** Last loaded value: forms start with it, so the chips are there on the first paint. */
 let last: Suggestions = EMPTY
 const loadAndKeep = () => load().then((v) => { last = v; return v })
+
+/** Forget everything (another person's data is now on screen). */
+export function resetSuggestions() { cache = null; last = EMPTY }
 
 /** Warm the cache early (called at start-up and after each save). */
 export function preloadSuggestions() { cache ??= loadAndKeep() }

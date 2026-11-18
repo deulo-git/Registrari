@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { useI18n } from '../lib/i18n'
-import { PIPA, nextMove, phrase, type Mood, type PhraseList } from '../lib/pipa'
+import { PIPA, annoyChance, nextMove, phrase, setPetContext, talkEverySec, type Mood, type PhraseList } from '../lib/pipa'
+import { SPECIES } from '../lib/pets'
+import { useAuth } from '../lib/auth'
+import { PetArt, PoodleSvg } from './PetSvgs'
+export { PoodleSvg }
 
 /**
  * "Pipa", the toy poodle that lives next to the big button.
@@ -30,7 +34,7 @@ const BOWL_R = 20
 /** Moods that just last a while in place (a tap can interrupt them). */
 const IN_PLACE: Mood[] = [
   'sit', 'lie', 'sniff', 'play', 'chase', 'roll', 'stretch', 'scratch', 'beg', 'dig', 'drink',
-  'dance', 'shake', 'bow', 'hop', 'butterfly', 'bone', 'sneeze', 'wave', 'howl', 'tummy',
+  'dance', 'shake', 'bow', 'hop', 'butterfly', 'bone', 'sneeze', 'wave', 'howl', 'tummy', 'special',
 ]
 
 interface Poop { id: number; x: number; gone?: boolean }
@@ -53,6 +57,11 @@ interface Props {
 
 export function Pet({ hidden, water }: Props) {
   const { lang } = useI18n()
+  const { active } = useAuth()
+  const pet = active?.profile.pet
+  const species = pet?.species ?? 'poodle'
+  // Who she is (species, sliders, answers) must be known before she says anything.
+  if (active) setPetContext({ pet: active.profile.pet, userName: active.profile.first_name, legacy: active.profile.legacy })
   const track = useRef<HTMLDivElement>(null)
   const [mood, setMood] = useState<Mood>('sit')
   const [x, setX] = useState(0.82)
@@ -166,6 +175,7 @@ export function Pet({ hidden, water }: Props) {
         setMood(m)
         if (m === 'sleep') schedule(next, rand(14000, 24000))
         else if (m === 'chase' || m === 'roll' || m === 'shake' || m === 'sneeze') schedule(next, rand(2600, 3400))
+        else if (m === 'special') schedule(next, rand(3600, 5000))
         else schedule(next, rand(4000, 7500))
     }
   }
@@ -187,7 +197,8 @@ export function Pet({ hidden, water }: Props) {
       const thirsty = cur.water < 0.3 && cur.water <= 0.5 && new Date().getHours() >= 12
       say(thirsty && Math.random() < PIPA.thirstyChance ? 'set' : 'sola')
     }
-    chatterTimer.current = window.setTimeout(chatter, rand(PIPA.talkEverySec[0], PIPA.talkEverySec[1]) * 1000)
+    const [lo, hi] = talkEverySec()
+    chatterTimer.current = window.setTimeout(chatter, rand(lo, hi) * 1000)
   }
 
   useEffect(() => {
@@ -275,7 +286,7 @@ export function Pet({ hidden, water }: Props) {
     }
     // Too many taps in a short while: sometimes she gets cross and runs off.
     taps.current = [...taps.current.filter((t) => now - t < PIPA.annoyWindowMs), now]
-    if (taps.current.length > PIPA.annoyAfterTaps && Math.random() < PIPA.annoyChance) {
+    if (taps.current.length > PIPA.annoyAfterTaps && Math.random() < annoyChance()) {
       taps.current = []
       lastTapTalk.current = now
       say('enfadada')
@@ -346,12 +357,13 @@ export function Pet({ hidden, water }: Props) {
         </svg>
       </div>
       <div ref={track} className={'pet-track' + (hidden ? ' hidden' : '')}>
-        <div ref={petRef} className={`pet mood-${mood}${mood === 'rub' ? ` rv-${rubV}` : ''}`}
+        <div ref={petRef} className={`pet sp-${species} mood-${mood}${mood === 'rub' ? ` rv-${rubV}` : ''}`}
           style={{ left: `${x * 100}%`, transitionDuration: `${moveMs}ms` }}
           onClick={poke} onPointerDown={startRub} onPointerUp={stopRub} onPointerCancel={stopRub}
-          onContextMenu={(e) => e.preventDefault()} role="button" aria-label="Pipa">
+          onContextMenu={(e) => e.preventDefault()} role="button" aria-label={pet?.name || 'Pipa'}>
           <div className="pet-flip" style={{ transform: `scaleX(${facing})` }}>
-            <PoodleSvg />
+            <PetArt species={species} />
+            {mood === 'special' && SPECIES[species].prop && <span className={`pet-prop prop-${species}`}>{SPECIES[species].prop}</span>}
             {mood === 'play' && <span className="pet-ball" />}
             {mood === 'dig' && <span className="pet-dirt"><i /><i /><i /></span>}
             {mood === 'drink' && water > 0.02 && <span className="pet-drops"><i /><i /><i /></span>}
@@ -410,48 +422,6 @@ function PoopSvg() {
       <path d="M11 17c3 1 9 1 13-1M8 23c5 2 15 2 21-1" stroke="#6b4220" strokeWidth="1.4" fill="none" strokeLinecap="round" />
       <circle cx="16" cy="24" r="1.6" fill="#fff" /><circle cx="24" cy="24" r="1.6" fill="#fff" />
       <circle cx="16.3" cy="24.3" r=".8" fill="#222" /><circle cx="24.3" cy="24.3" r=".8" fill="#222" />
-    </svg>
-  )
-}
-
-/** Apricot toy poodle facing right. Parts have classes so CSS can animate them. */
-export function PoodleSvg() {
-  const fur = '#f2c48d'
-  const furDark = '#e2a96b'
-  return (
-    <svg className="poodle" viewBox="0 0 120 100" width="104" height="87">
-      <ellipse className="p-shadow" cx="62" cy="93" rx="34" ry="4" fill="rgba(21,128,61,.18)" />
-      <g className="p-tail">
-        <path d="M30 52 Q22 44 22 34" stroke={furDark} strokeWidth="4" fill="none" strokeLinecap="round" />
-        <circle cx="22" cy="31" r="7" fill={fur} />
-      </g>
-      <g className="p-leg p-leg-bl"><rect x="37" y="60" width="7" height="24" rx="3.5" fill={furDark} /><circle cx="40.5" cy="86" r="5.5" fill={furDark} /></g>
-      <g className="p-leg p-leg-fl"><rect x="75" y="60" width="7" height="24" rx="3.5" fill={furDark} /><circle cx="78.5" cy="86" r="5.5" fill={furDark} /></g>
-      <g className="p-body">
-        <circle cx="42" cy="54" r="15" fill={fur} />
-        <circle cx="58" cy="50" r="17" fill={fur} />
-        <circle cx="74" cy="53" r="15" fill={fur} />
-        <circle cx="50" cy="62" r="11" fill={fur} />
-        <circle cx="68" cy="63" r="11" fill={fur} />
-      </g>
-      <g className="p-leg p-leg-br"><rect x="45" y="62" width="8" height="23" rx="4" fill={fur} /><circle cx="49" cy="86" r="6" fill={fur} /></g>
-      <g className="p-leg p-leg-fr"><rect x="83" y="62" width="8" height="23" rx="4" fill={fur} /><circle cx="87" cy="86" r="6" fill={fur} /></g>
-      <g className="p-head">
-        <circle cx="88" cy="38" r="13" fill={fur} />
-        <circle cx="86" cy="22" r="9" fill={fur} />
-        <circle cx="94" cy="25" r="7" fill={fur} />
-        <ellipse cx="102" cy="42" rx="10" ry="7" fill={fur} />
-        <circle cx="111" cy="40" r="3" fill="#3b2314" />
-        <path d="M104 47 q3 2 6 0" stroke="#3b2314" strokeWidth="1.4" fill="none" strokeLinecap="round" />
-        <g className="p-eye-open"><circle cx="95" cy="34" r="2.6" fill="#3b2314" /><circle cx="95.8" cy="33.2" r=".8" fill="#fff" /></g>
-        <path className="p-eye-closed" d="M92 35 q3 2 6 0" stroke="#3b2314" strokeWidth="1.6" fill="none" strokeLinecap="round" />
-        <ellipse className="p-blush" cx="98" cy="40" rx="3" ry="1.8" fill="#f9a8a8" opacity=".7" />
-        <g className="p-ear">
-          <ellipse cx="80" cy="42" rx="7" ry="12" fill={furDark} />
-          <circle cx="79" cy="52" r="5.5" fill={furDark} />
-        </g>
-        <path className="p-tongue" d="M106 47 q2 6 5 0z" fill="#f87171" />
-      </g>
     </svg>
   )
 }

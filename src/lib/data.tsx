@@ -1,37 +1,26 @@
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react'
-import { fetchConfig, fetchEntries, onDataChange, saveConfig } from './api'
-import { DEFAULT_CONFIG, type Config, type Entry, type EntryType } from './types'
-import { usePin } from './pin'
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { configFrom, fetchEntries, onDataChange, saveConfig } from './api'
+import { type Config, type Entry, type EntryType } from './types'
+import { useAuth } from './auth'
 
 interface ConfigApi {
   config: Config
-  /** True once the first load finished (or failed), for the loading screen. */
+  /** True once the account finished loading (for the loading screen). */
   loaded: boolean
-  /** Saves the whole config (PIN-protected). Resolves false when cancelled. */
+  /** Saves the whole config of the data on screen. Resolves false when not allowed or failed. */
   updateConfig: (c: Config) => Promise<boolean>
 }
 const Ctx = createContext<ConfigApi | null>(null)
 
+/** Settings live in the owner's profile; helpers read them, owners and "full" helpers change them. */
 export function ConfigProvider({ children }: { children: ReactNode }) {
-  const { withPin } = usePin()
-  const [config, setConfig] = useState<Config>(DEFAULT_CONFIG)
-  const [loaded, setLoaded] = useState(false)
-
-  useEffect(() => {
-    const load = () => fetchConfig().then(setConfig).catch(() => {}).finally(() => setLoaded(true))
-    load()
-    const onVis = () => { if (document.visibilityState === 'visible') load() }
-    document.addEventListener('visibilitychange', onVis)
-    return () => document.removeEventListener('visibilitychange', onVis)
-  }, [])
-
+  const { active, status, can, refresh } = useAuth()
+  const config = useMemo(() => configFrom(active?.profile), [active])
   const updateConfig = useCallback(async (c: Config) => {
-    const r = await withPin(async (pin) => { await saveConfig(pin, c); return true })
-    if (r) setConfig(c)
-    return !!r
-  }, [withPin])
-
-  return <Ctx.Provider value={{ config, loaded, updateConfig }}>{children}</Ctx.Provider>
+    if (!can.admin) return false
+    try { await saveConfig(c); await refresh(); return true } catch { return false }
+  }, [can.admin, refresh])
+  return <Ctx.Provider value={{ config, loaded: status !== 'loading', updateConfig }}>{children}</Ctx.Provider>
 }
 
 export function useConfig() {

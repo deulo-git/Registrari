@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useBackClose } from '../lib/backClose'
+import { useAuth } from '../lib/auth'
 import { useI18n, type TKey } from '../lib/i18n'
 import { apptLabel, docKindLabel, fmtDate, fmtTime } from '../lib/format'
 import { apptGroup, type AppointmentData, type DocumentData, type Entry } from '../lib/types'
@@ -16,6 +17,7 @@ export function ApptViewer({ appts, index, setIndex, docsFor, onClose, onEdit }:
 }) {
   const { t, locale } = useI18n()
   useBackClose(onClose)
+  const { can } = useAuth()
   const entry = appts[index]
   const d = entry?.data as AppointmentData | undefined
   const bodyRef = useRef<HTMLDivElement>(null)
@@ -46,7 +48,7 @@ export function ApptViewer({ appts, index, setIndex, docsFor, onClose, onEdit }:
           <span>{index + 1} / {appts.length}</span>
           <button type="button" className="icon-btn" disabled={index >= appts.length - 1} onClick={() => setIndex(index + 1)} aria-label={t('nextItem')}><ChevronRight /></button>
         </div>
-        <button type="button" className="icon-btn dv-edit" onClick={() => onEdit(entry)} aria-label={t('edit')}><PencilIcon size={20} /></button>
+        {can.write ? <button type="button" className="icon-btn dv-edit" onClick={() => onEdit(entry)} aria-label={t('edit')}><PencilIcon size={20} /></button> : <span />}
       </header>
 
       <div ref={bodyRef} className="dv-body" key={entry.id}>
