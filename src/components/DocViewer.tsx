@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useBackClose } from '../lib/backClose'
 import { useI18n } from '../lib/i18n'
 import { docKindLabel, fmtDate } from '../lib/format'
 import { fileUrl } from '../lib/api'
@@ -103,6 +104,7 @@ function FileView({ file, big, onOpen }: { file: StoredFile; big?: boolean; onOp
 /** Full-screen look at the files: swipe between them, back button to return. */
 function Lightbox({ files, start, onClose }: { files: StoredFile[]; start: number; onClose: () => void }) {
   const { t } = useI18n()
+  useBackClose(onClose)
   const [i, setI] = useState(start)
   useEffect(() => {
     const k = (e: KeyboardEvent) => {
@@ -133,6 +135,7 @@ export function DocViewer({ docs, index, setIndex, onClose, onEdit }: {
   docs: Entry[]; index: number; setIndex: (i: number) => void; onClose: () => void; onEdit: (e: Entry) => void
 }) {
   const { t, locale } = useI18n()
+  useBackClose(onClose)
   const entry = docs[index]
   const d = entry?.data as DocumentData | undefined
   const [fileIdx, setFileIdx] = useState(0)

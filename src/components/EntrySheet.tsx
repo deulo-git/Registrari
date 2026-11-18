@@ -5,6 +5,7 @@ import {
   type GasData, type MealData, type MealKind, type MedicationData, type StoredFile, type SymptomData, type SymptomItem,
   type WaterData,
 } from '../lib/types'
+import { useBackClose } from '../lib/backClose'
 import { useI18n, type TKey } from '../lib/i18n'
 import { useConfig } from '../lib/data'
 import { usePin } from '../lib/pin'
@@ -81,6 +82,7 @@ function enrichMealLater(pin: string, lang: string, id: string, occurredAt: stri
 
 export function EntrySheet({ type, entry, defaultDate, onClose }: Props) {
   const { t, lang } = useI18n()
+  useBackClose(onClose)
   const { config } = useConfig()
   const { withPin } = usePin()
   const initialWhen = useMemo(() => {

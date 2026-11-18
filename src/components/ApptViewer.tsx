@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useBackClose } from '../lib/backClose'
 import { useI18n, type TKey } from '../lib/i18n'
 import { apptLabel, docKindLabel, fmtDate, fmtTime } from '../lib/format'
 import { apptGroup, type AppointmentData, type DocumentData, type Entry } from '../lib/types'
@@ -14,6 +15,7 @@ export function ApptViewer({ appts, index, setIndex, docsFor, onClose, onEdit }:
   docsFor: (apptId: string) => Entry[]; onClose: () => void; onEdit: (e: Entry) => void
 }) {
   const { t, locale } = useI18n()
+  useBackClose(onClose)
   const entry = appts[index]
   const d = entry?.data as AppointmentData | undefined
   const bodyRef = useRef<HTMLDivElement>(null)
