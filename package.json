@@ -12,6 +12,7 @@
     "@supabase/supabase-js": "^2.119.0",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.9",
+    "pdfjs-dist": "^4.10.38",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"
   },

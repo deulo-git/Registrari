@@ -5,6 +5,7 @@ import { useI18n } from '../lib/i18n'
 import { docKindLabel, fmtDate } from '../lib/format'
 import { fileUrl } from '../lib/api'
 import { DOC_COLOR, type DocumentData, type Entry, type StoredFile } from '../lib/types'
+import { PdfPages } from './PdfPages'
 import { ChevronLeft, ChevronRight, FileIcon, PencilIcon } from './Icons'
 
 const urlCache = new Map<string, Promise<string>>()
@@ -89,11 +90,11 @@ function FileView({ file, big, onOpen }: { file: StoredFile; big?: boolean; onOp
   }
   if (isPdf(file)) {
     return big
-      ? <iframe className="dv-pdf" src={url} title={file.name} />
+      ? <PdfPages url={url} className="big" />
       : (
         <div className="dv-pdf-wrap">
-          <iframe className="dv-pdf" src={`${url}#toolbar=0&navpanes=0`} title={file.name} tabIndex={-1} />
-          <button type="button" className="dv-pdf-hit" onClick={onOpen} aria-label={t('tapToEnlarge')} />
+          <PdfPages url={url} />
+          <button type="button" className="dv-pdf-zoom" onClick={onOpen}>{t('tapToEnlarge')}</button>
         </div>
       )
   }
