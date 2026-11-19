@@ -83,7 +83,7 @@ export function Pet({ hidden, water }: Props) {
   s.current = { x, mood, water, lang, hidden, facing, poops }
 
   const say = (list: PhraseList) => {
-    if (sulking.current) return
+    if (sulking.current || rubbing.current) return // silent while being scratched
     // Never complains of thirst when the button is more than half full.
     const text = phrase(list, s.current.lang, s.current.water > 0.5 ? /\b(set|sed)\b|aigua siusp|agua porfavor|poca (aigua|agua)/i : undefined)
     if (!text) return
