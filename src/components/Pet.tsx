@@ -337,6 +337,7 @@ export function Pet({ hidden, water }: Props) {
 
   return (
     <>
+      <div className={'pet-ground' + (hidden ? ' hidden' : '')} aria-hidden="true" />
       <div className="poop-track" aria-hidden={hidden}>
         {poops.map((p) => (
           <button key={p.id} type="button" className={'poop' + (p.gone ? ' gone' : '') + (hidden ? ' hidden' : '')}
